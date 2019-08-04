@@ -1,0 +1,14 @@
+total 2638304
+drwxr-xr-x 7 goto goto       4096 Aug  4 19:45 .
+drwxr-xr-x 9 goto goto       4096 Aug  4 19:42 ..
+drwxr-xr-x 3 goto goto       4096 Jul 21 17:24 cnn_stories
+-rw-rw-r-- 1 goto goto  158577824 Jun  1 12:47 cnn_stories.tgz
+drwxr-xr-x 3 goto goto       4096 Jul 21 17:24 dailymail_stories
+-rw-rw-r-- 1 goto goto  375893739 Jul 21 17:20 dailymail_stories.tgz
+-rw-r--r-- 1 goto goto          0 Aug  4 19:45 files.txt
+drwxr-xr-x 2 goto goto       4096 Jul 21 17:04 tldr-challenge-dataset
+-rw-rw-r-- 1 goto goto 2157862847 Jul 21 17:03 tldr-challenge-dataset.zip
+drwxrwx--- 2 goto goto       4096 Sep 27  2016 wikitext-2
+drwxrwx--- 2 goto goto       4096 Sep 27  2016 wikitext-2-raw
+-rw-rw-r-- 1 goto goto    4721645 Jul 25 21:39 wikitext-2-raw-v1.zip
+-rw-rw-r-- 1 goto goto    4475746 Jul 25 21:30 wikitext-2-v1.zip

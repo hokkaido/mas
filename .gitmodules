@@ -1,0 +1,6 @@
+[submodule "deps/apex"]
+	path = deps/apex
+	url = https://github.com/NVIDIA/apex
+[submodule "deps/snorkel"]
+	path = deps/snorkel
+	url = https://github.com/https://github.com/HazyResearch/snorkel
