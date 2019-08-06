@@ -13,6 +13,7 @@ dependencies:
   - ca-certificates=2019.6.16=hecc5488_0
   - certifi=2019.6.16=py37_1
   - cffi=1.12.3=py37h2e261b9_0
+  - chardet=3.0.4=py37_1003
   - cryptography=2.7=py37h72c5cf5_0
   - cudatoolkit=10.0.130=0
   - cymem=2.0.2=py37he1b5a44_0
@@ -21,6 +22,7 @@ dependencies:
   - defusedxml=0.5.0=py_1
   - entrypoints=0.3=py37_1000
   - freetype=2.9.1=h8a8886c_1
+  - idna=2.8=py37_1000
   - intel-openmp=2019.4=243
   - ipykernel=5.1.1=py37h5ca1d4c_0
   - ipython=7.6.1=py37h5ca1d4c_0
@@ -107,12 +109,10 @@ dependencies:
   - zstd=1.3.7=h0b5b093_0
   - pip:
     - apex==0.1
-    - boto3==1.9.191
-    - botocore==1.12.191
-    - chardet==3.0.4
-    - docutils==0.15
+    - boto3==1.9.202
+    - botocore==1.12.202
+    - docutils==0.14
     - en-core-web-sm==2.1.0
-    - idna==2.8
     - jmespath==0.9.4
     - nltk==3.3
     - pytorch-transformers==1.0.0
