@@ -4,3 +4,9 @@
 [submodule "deps/snorkel"]
 	path = deps/snorkel
 	url = https://github.com/HazyResearch/snorkel
+[submodule "deps/MASS"]
+	path = deps/MASS
+	url = https://github.com/microsoft/MASS
+[submodule "deps/XLM"]
+	path = deps/XLM
+	url = https://github.com/facebookresearch/XLM
