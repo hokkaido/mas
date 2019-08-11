@@ -10,3 +10,9 @@
 [submodule "deps/XLM"]
 	path = deps/XLM
 	url = https://github.com/facebookresearch/XLM
+[submodule "deps/transformer-xl"]
+	path = deps/transformer-xl
+	url = https://github.com/kimiyoung/transformer-xl
+[submodule "deps/fastBPE"]
+	path = deps/fastBPE
+	url = https://github.com/glample/fastBPE
