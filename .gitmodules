@@ -13,3 +13,9 @@
 [submodule "deps/fastBPE"]
 	path = deps/fastBPE
 	url = https://github.com/glample/fastBPE
+[submodule "deps/MASS"]
+	path = deps/MASS
+	url = https://github.com/hokkaido/MASS.git
+[submodule "deps/files2rouge"]
+	path = deps/files2rouge
+	url = https://github.com/pltrdy/files2rouge.git
