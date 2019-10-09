@@ -1,2 +1,2 @@
-# gigaword
-https://github.com/harvardnlp/sent-summary
+https://modelrelease.blob.core.windows.net/mass/mass-base-uncased.tar.gz
+https://modelrelease.blob.core.windows.net/mass/cnndm.tar.gz
