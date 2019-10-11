@@ -11,12 +11,10 @@ dm_double_close_quote = u'\u201d'
 END_TOKENS = ['.', '!', '?', '...', "'", "`", '"', dm_single_close_quote, dm_double_close_quote, ")"] # acceptable ways to end a sentence
 
 # We use these to separate the summary sentences in the .bin datafiles
-SENTENCE_START = '<s>'
-SENTENCE_END = '</s>'
+SENTENCE_START = '[CLS]'
+SENTENCE_END = '[SEP]'
 
-MAX_TOKENS = 400
-
-data_dir = "datasets/cnndm"
+data_dir = "datasets/outdated/cnndm"
 
 all_train_urls = os.path.join(data_dir, "url_lists/all_train.txt")
 all_val_urls = os.path.join(data_dir, "url_lists/all_val.txt")
@@ -24,7 +22,7 @@ all_test_urls = os.path.join(data_dir, "url_lists/all_test.txt")
 
 cnn_tokenized_stories_dir = os.path.join(data_dir, "cnn_stories_tokenized")
 dm_tokenized_stories_dir = os.path.join(data_dir, "dm_stories_tokenized")
-finished_files_dir = os.path.join(data_dir, "finished_files")
+finished_files_dir = os.path.join(data_dir, "finished_files_new")
 
 # These are the number of .story files we expect there to be in cnn_stories_dir and dm_stories_dir
 num_expected_cnn_stories = 92579
@@ -86,9 +84,9 @@ def get_art_abs(story_file):
       article_lines.append(line)
 
   # Make article into a single string
-  article = ' '.join(article_lines[:MAX_TOKENS])
+  article = ' [SEP] '.join(article_lines) + ' [SEP]'
 
-  abstract = ' '.join(highlights[:MAX_TOKENS])
+  abstract = ' [SEP] '.join(highlights) + ' [SEP]'
 
   return article, abstract
 
