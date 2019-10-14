@@ -19,3 +19,6 @@
 [submodule "deps/files2rouge"]
 	path = deps/files2rouge
 	url = https://github.com/pltrdy/files2rouge.git
+[submodule "deps/rouge"]
+	path = deps/rouge
+	url = https://github.com/neural-dialogue-metrics/rouge.git

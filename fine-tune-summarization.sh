@@ -1,4 +1,4 @@
-fairseq-train datasets/cnndmsent/processed/ \
+fairseq-train datasets/cnndm/ \
     --user-dir deps/MASS/MASS-summarization/mass --task summarization_mass --arch summarization_mass_base \
     --optimizer adam --adam-betas '(0.9, 0.98)' --clip-norm 0.0 \
     --lr 0.0005 --min-lr 1e-09 \

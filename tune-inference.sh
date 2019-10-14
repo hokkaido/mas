@@ -1,12 +1,11 @@
-MODEL=checkpoints/checkpoint_best.pt
+MODEL=checkpoints/cnndm/checkpoint_best.pt
 DATADIR=datasets/cnndm/
 USERDIR=deps/MASS/MASS-summarization/mass
 
-fairseq-generate $DATADIR --path $MODEL \
+python gen-search.py $DATADIR --path $MODEL \
     --user-dir $USERDIR --task translation_mass \
-    --batch-size 64 --beam 5 --min-len 50 --no-repeat-ngram-size 3 \
+    --batch-size 200 \
     --skip-invalid-size-inputs-valid-test \
     --fp16 \
     --memory-efficient-fp16 \
-    --lenpen 1.0 > output.txt
 
