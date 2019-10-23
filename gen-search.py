@@ -14,25 +14,29 @@ from fairseq import bleu, checkpoint_utils, options, progress_bar, tasks, utils
 from fairseq.meters import StopwatchMeter, TimeMeter
 import numpy as np
 import copy
-from rouge import rouge_n_sentence_level
+from rouge import rouge_n_sentence_level, rouge_l_sentence_level
 import re
 
-parameters = {'beam': [5, 7, 10], 'no_repeat_ngram_size': [3, 4, 5], 'lenpen': [0.5, 0.75, 1.0, 1.25], 'min_len': [50, 75]}
+parameters = {'beam': [5, 6], 'no_repeat_ngram_size': [3, 4, 5], 'lenpen': [1.0, 0.8], 'min_len': [50, 75]}
 
 class RougeScorer:
     def score(self, pairs):
-        recalls = []
-        precisions = []
-        rouges = []
+        rouges_1 = []
+        rouges_2 = []
+        rouges_l = []
         for pair in pairs:
             target, hypo = pair
             # Calculate ROUGE-2.
-            recall, precision, rouge = rouge_n_sentence_level(hypo, target, 2)
-            recalls.append(recall)
-            precisions.append(precision)
-            rouges.append(rouge)
+            _, _, rouge_1 = rouge_n_sentence_level(hypo, target, 1)
+            _, _, rouge_2 = rouge_n_sentence_level(hypo, target, 2)
+            _, _, rouge_l = rouge_l_sentence_level(hypo, target)
+            rouges_1.append(rouge_1)
+            rouges_2.append(rouge_2)
+            rouges_l.append(rouge_l)
         return {
-            'ROUGE-2-F (avg)': np.average(rouges),
+            'ROUGE-1-F (avg)': np.average(rouges_1),
+            'ROUGE-2-F (avg)': np.average(rouges_2),
+            'ROUGE-2-L (avg)': np.average(rouges_l),
         }
 
 class ParameterGrid:
@@ -241,4 +245,6 @@ def cli_main():
 
 
 if __name__ == '__main__':
+    torch.set_printoptions(profile="short")
+    torch.set_printoptions(threshold=50)
     cli_main()

@@ -3,7 +3,7 @@ DATADIR=datasets/cnndm/
 USERDIR=deps/MASS/MASS-summarization/mass
 
 fairseq-generate $DATADIR --path $MODEL \
-    --user-dir $USERDIR --task translation_mass \
+    --user-dir $USERDIR --task segmented_summarization_mass \
     --batch-size 64 --beam 5 --min-len 50 --no-repeat-ngram-size 3 \
     --skip-invalid-size-inputs-valid-test \
     --fp16 \
