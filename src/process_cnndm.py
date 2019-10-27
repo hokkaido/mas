@@ -22,7 +22,11 @@ all_test_urls = os.path.join(data_dir, "url_lists/all_test.txt")
 
 cnn_tokenized_stories_dir = os.path.join(data_dir, "cnn_stories_tokenized")
 dm_tokenized_stories_dir = os.path.join(data_dir, "dm_stories_tokenized")
-finished_files_dir = os.path.join(data_dir, "finished_files_new")
+finished_files_dir = os.path.join(data_dir, "finished_files_510")
+
+DO_LOWER = False
+DO_SEP = False
+MAX_TOKENS = 510
 
 # These are the number of .story files we expect there to be in cnn_stories_dir and dm_stories_dir
 num_expected_cnn_stories = 92579
@@ -64,7 +68,8 @@ def get_art_abs(story_file):
   lines = read_text_file(story_file)
 
   # Lowercase everything
-  lines = [line.lower() for line in lines]
+  if DO_LOWER:
+    lines = [line.lower() for line in lines]
 
   # Put periods on the ends of lines that are missing them (this is a problem in the dataset because many image captions don't end in periods; consequently they end up in the body of the article as run-on sentences)
   lines = [fix_missing_period(line) for line in lines]
@@ -83,13 +88,10 @@ def get_art_abs(story_file):
     else:
       article_lines.append(line)
 
-  # Make article into a single string
-  article = ' [SEP] '.join(article_lines) + ' [SEP]'
-
-  abstract = ' [SEP] '.join(highlights) + ' [SEP]'
+  article = ' '.join(article_lines)
+  abstract = ' '.join(highlights)
 
   return article, abstract
-
 
 def write_to_bin(url_file, out_file_article, out_file_abstract):
   """Reads the tokenized .story files corresponding to the urls listed in the url_file and writes them to a out_file."""
@@ -120,6 +122,8 @@ def write_to_bin(url_file, out_file_article, out_file_abstract):
 
         # Get the strings to write to file
         article, abstract = get_art_abs(story_file)
+        article = ' '.join(article.split(' ')[:MAX_TOKENS])
+        abstract = ' '.join(abstract.split(' ')[:MAX_TOKENS])
         eol = "\n"
         if idx == num_stories - 1:
           eol = ""
