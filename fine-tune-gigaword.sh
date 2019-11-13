@@ -1,4 +1,4 @@
-fairseq-train datasets/cnndm-augmented-510/ \
+fairseq-train datasets/gigaword-augmented/ \
     --user-dir deps/MASS/MASS-summarization/mass --task augmented_summarization_mass --arch summarization_mass_base \
     --optimizer adam --adam-betas '(0.9, 0.98)' --clip-norm 0.0 \
     --lr 0.0005 --min-lr 1e-09 \

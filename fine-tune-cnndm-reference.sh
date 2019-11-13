@@ -1,4 +1,4 @@
-# Used to reproduce MASS results
+# Used to reproduce MASS results with the binarized examples from MASS
 
 fairseq-train datasets/cnndm/ \
     --user-dir deps/MASS/MASS-summarization/mass --task translation_mass --arch transformer_mass_base \
