@@ -1,5 +1,5 @@
-PARADIR=datasets/cnndmsent/para-400
-PROCDIR=datasets/cnndmsent/processed-400
+PARADIR=datasets/cnndm-augmented-510/preprocessed-core
+PROCDIR=datasets/cnndm-augmented-510/core
 
 fairseq-preprocess \
     --user-dir deps/MASS/MASS-summarization/mass --task masked_s2s \

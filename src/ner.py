@@ -26,7 +26,7 @@ CARDINAL	Numerals that do not fall under another type.
 """
 
 ENTITY_TYPES = {
-    'PAD': 0,
+    '[PAD]': 0,
     'NONE': 1,
     'PERSON': 2,
     'NORP': 3,
