@@ -11,6 +11,8 @@ from pytorch_transformers import BertTokenizer
 from tokenizer import MagicBertTokenizer
 from ner import ENTITY_TYPES, align_tokens
 
+MAX_TOKENS = 510
+
 import spacy
 
 def main():
@@ -66,7 +68,7 @@ def main():
 
         encoder = MultiprocessingEncoder(args)
         pool = Pool(args.workers, initializer=encoder.initializer)
-        encoded_lines = pool.imap(encoder.encode_lines, zip(*inputs), 100)
+        encoded_lines = pool.imap(encoder.encode_lines, zip(*inputs), 1000)
 
         stats = Counter()
         for i, (filt, enc_lines, ent_lines) in enumerate(encoded_lines, start=1):
@@ -77,7 +79,7 @@ def main():
                     print(ent_line, file=output_h)
             else:
                 stats["num_filtered_" + filt] += 1
-            if i % 10000 == 0:
+            if i % 1000 == 0:
                 print("processed {} lines".format(i), file=sys.stderr)
 
         for k, v in stats.most_common():
@@ -112,12 +114,12 @@ class MultiprocessingEncoder(object):
     def encode_entities(self, line, subwords):
         global nlp
         doc = nlp(line)
+        
         _, alignments = align_tokens(doc, subwords)
 
         entities = ['NONE' for subword in subwords]
 
         if alignments is None:
-            print(subwords)
             return entities
             
         for i in range(len(alignments)):
@@ -138,19 +140,25 @@ class MultiprocessingEncoder(object):
         """
         enc_lines = []
         ent_lines = []
+
         for line in lines:
             line = line.strip()
-            if len(line) == 0 and not self.args.keep_empty:
-                return ["EMPTY", None, None]
-            try:
-                tokens = self.encode(line)
-                mtokens = self.magic_encode(line)
-                entities = self.encode_entities(line, mtokens)
+            if len(line) == 0:
+                enc_lines.append('')
+                ent_lines.append('')
+            else:
+                try:
+                    tokens = self.encode(line)
+                    mtokens = self.magic_encode(line)
+                    entities = self.encode_entities(line, mtokens)
+                    enc_lines.append(" ".join(tokens[:MAX_TOKENS]))
+                    ent_lines.append(" ".join(entities[:MAX_TOKENS]))
+                except AssertionError:
+                    print('ERROR')
+                    enc_lines.append(" ".join(tokens[:MAX_TOKENS]))
+                    ent_lines.append(" ".join(['NONE' for subword in tokens][:MAX_TOKENS]))
 
-                enc_lines.append(" ".join(tokens))
-                ent_lines.append(" ".join(entities))
-            except AssertionError:
-                print('Error occured')
+        assert len(enc_lines) == len(ent_lines)
         return ["PASS", enc_lines, ent_lines]
 
     def decode_lines(self, lines):
