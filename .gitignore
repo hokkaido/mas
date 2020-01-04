@@ -1,4 +1,11 @@
 .ipynb_checkpoints
 checkpoints
+cache_dir
 datasets/*/
+deps/fastText-0.9.1
 *.tar.gz
+spacy_models
+__pycache__
+runs
+eval
+experiments

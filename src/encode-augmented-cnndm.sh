@@ -1,5 +1,5 @@
-ENC_OUTDIR=datasets/cnndm-augmented-510/preprocessed-core
-ENT_OUTDIR=datasets/cnndm-augmented-510/preprocessed-entities
+ENC_OUTDIR=datasets/cnndm-augmented-511/preprocessed-core
+ENT_OUTDIR=datasets/cnndm-augmented-511/preprocessed-entities
 mkdir -p $ENC_OUTDIR
 mkdir -p $ENT_OUTDIR
 for SPLIT in train valid test; do 

@@ -14,10 +14,86 @@ from fairseq import bleu, checkpoint_utils, options, progress_bar, tasks, utils
 from fairseq.meters import StopwatchMeter, TimeMeter
 import numpy as np
 import copy
-from rouge import rouge_n_sentence_level, rouge_l_sentence_level
+from rouge import rouge_n_sentence_level, rouge_l_summary_level
 import re
+import files2rouge as f2r
+import tempfile
+import os
+import pyrouge
+import logging
 
-parameters = {'beam': [5, 6], 'no_repeat_ngram_size': [3, 4, 5], 'lenpen': [1.0, 0.8], 'min_len': [50, 75]}
+parameters = {'beam': [4], 'no_repeat_ngram_size': [3], 'lenpen': [0.5, 1.0, 2], 'min_len': [45, 50, 55], 'max_len_b': [125, 150, 200]}
+
+def run_p2r(summ_path,
+        ref_path,
+        rouge_args=None,
+        verbose=False,
+        saveto=None,
+        eos=".",
+        ignore_empty=False,
+        stemming=False):
+    s = f2r.settings.Settings()
+    s._load()
+    dirpath = tempfile.mkdtemp()
+    sys_root, model_root = [os.path.join(dirpath, _)
+                            for _ in ["system", "model"]]
+
+    print("Preparing documents...", end=" ")
+    f2r.utils.mkdirs([sys_root, model_root])
+    ignored = f2r.utils.split_files(model_file=ref_path,
+                                system_file=summ_path,
+                                model_dir=model_root,
+                                system_dir=sys_root,
+                                eos=eos,
+                                ignore_empty=ignore_empty)
+    log_level = logging.ERROR if not verbose else None
+    r = pyrouge.Rouge155(rouge_dir=os.path.dirname(s.data['ROUGE_path']), log_level=log_level)
+    r.system_dir = sys_root
+    r.model_dir = model_root
+    r.system_filename_pattern = r's.(\d+).txt'
+    r.model_filename_pattern = 'm.[A-Z].#ID#.txt'
+    data_arg = "-e %s" % s.data['ROUGE_data']
+
+    if not rouge_args:
+        rouge_args = [
+            '-c', 95,
+            '-r', 1000,
+            '-n', 2,
+            '-a']
+        if stemming:
+            rouge_args.append("-m")
+
+        rouge_args_str = " ".join([str(_) for _ in rouge_args])
+    else:
+        rouge_args_str = rouge_args
+    rouge_args_str = "%s %s" % (data_arg, rouge_args_str)
+    output = r.convert_and_evaluate(rouge_args=rouge_args_str)
+
+    return output
+
+def parse_rouge(text):
+
+    r1 = float(text.partition('ROUGE-1 Average_F: ')[2][:7])
+    r2 = float(text.partition('ROUGE-2 Average_F: ')[2][:7])
+    r3 = float(text.partition('ROUGE-L Average_F: ')[2][:7])
+    return {
+        'ROUGE-1-F (avg)': r1,
+        'ROUGE-2-F (avg)': r2,
+        'ROUGE-L-F (avg)': r3,
+        }
+
+0.44341
+class TrueRougeScorer:
+    def score(self, pairs):
+        with tempfile.NamedTemporaryFile(mode = "a+") as h, tempfile.NamedTemporaryFile(mode = "a+") as t:
+            for pair in pairs:
+                target, hypo = pair
+                print(' '.join(target), file=t, flush=True)
+                print(' '.join(hypo), file=h, flush=True)
+            
+            output = run_p2r(t.name, h.name)
+
+        return parse_rouge(output)
 
 class RougeScorer:
     def score(self, pairs):
@@ -29,14 +105,14 @@ class RougeScorer:
             # Calculate ROUGE-2.
             _, _, rouge_1 = rouge_n_sentence_level(hypo, target, 1)
             _, _, rouge_2 = rouge_n_sentence_level(hypo, target, 2)
-            _, _, rouge_l = rouge_l_sentence_level(hypo, target)
+            _, _, rouge_l = rouge_l_summary_level(hypo, target)
             rouges_1.append(rouge_1)
             rouges_2.append(rouge_2)
             rouges_l.append(rouge_l)
         return {
             'ROUGE-1-F (avg)': np.average(rouges_1),
             'ROUGE-2-F (avg)': np.average(rouges_2),
-            'ROUGE-2-L (avg)': np.average(rouges_l),
+            'ROUGE-L-F (avg)': np.average(rouges_l),
         }
 
 class ParameterGrid:
@@ -100,7 +176,47 @@ class GridSearch:
             vars(fit_args)[k] = v
         return fit_args
 
-    def fit(self, sample):
+    def get_batch_iterator(self):
+        return self.task.get_batch_iterator(
+                dataset=self.task.dataset(self.args.gen_subset),
+                max_tokens=self.args.max_tokens,
+                max_sentences=self.args.max_sentences,
+                max_positions=utils.resolve_max_positions(
+                    self.task.max_positions(),
+                    *[model.max_positions() for model in self.models]
+                ),
+                ignore_invalid_inputs=self.args.skip_invalid_size_inputs_valid_test,
+                required_batch_size_multiple=self.args.required_batch_size_multiple,
+                num_shards=self.args.num_shards,
+                shard_id=self.args.shard_id,
+                num_workers=self.args.num_workers,
+            )
+
+    def fit(self, n = 8):
+
+        scores = []
+
+        samples = []
+        itr = self.get_batch_iterator().next_epoch_itr(shuffle=False)
+        for _ in range(n):
+            samples.append(next(itr))
+        
+        for params in self.param_grid:
+            print(params)
+            
+            print('init')
+            to_score = []
+
+            for sample in samples:
+                to_score.extend(self.gen_candidates(params, sample))
+
+            score = self.scorer.score(to_score)
+            scores.append((params, score))
+            print(score)
+        return scores
+
+    def gen_candidates(self, params, sample):
+
         use_cuda = torch.cuda.is_available() and not self.args.cpu
         sample = utils.move_to_cuda(sample) if use_cuda else sample
         if 'net_input' not in sample:
@@ -109,63 +225,53 @@ class GridSearch:
         src_dict = self.task.source_dictionary
         tgt_dict = self.task.target_dictionary
 
-        grid_timer = StopwatchMeter()
-
-
         regex = r" ##"
+        args = self.make_fit_args(params)
+        generator = self.task.build_generator(args)
 
-        for params in self.param_grid:
-            print(params)
-            grid_timer.start()
-            args = self.make_fit_args(params)
-            generator = self.task.build_generator(args)
+        prefix_tokens = None
+        if args.prefix_size > 0:
+            prefix_tokens = sample['target'][:, :args.prefix_size]
 
-            prefix_tokens = None
-            if args.prefix_size > 0:
-                prefix_tokens = sample['target'][:, :args.prefix_size]
+        hypos = self.task.inference_step(generator, self.models, sample, prefix_tokens)
+        num_generated_tokens = sum(len(h[0]['tokens']) for h in hypos)
+        
+        to_score = []
 
-            
-            hypos = self.task.inference_step(generator, self.models, sample, prefix_tokens)
-            num_generated_tokens = sum(len(h[0]['tokens']) for h in hypos)
-            
-            grid_timer.stop(num_generated_tokens)
+        for i, sample_id in enumerate(sample['id'].tolist()):
+            # Remove padding
+            src_tokens = utils.strip_pad(sample['net_input']['src_tokens'][i, :], tgt_dict.pad())
+            target_tokens = utils.strip_pad(sample['target'][i, :], tgt_dict.pad()).int().cpu()
+            src_str = src_dict.string(src_tokens, args.remove_bpe)
+            target_str = tgt_dict.string(target_tokens, args.remove_bpe, escape_unk=True)
 
-            to_score = []
+            # Process top predictions
+            for j, hypo in enumerate(hypos[i][:args.nbest]):
+                hypo_tokens, hypo_str, alignment = utils.post_process_prediction(
+                    hypo_tokens=hypo['tokens'].int().cpu(),
+                    src_str=src_str,
+                    alignment=hypo['alignment'],
+                    align_dict=self.align_dict,
+                    tgt_dict=tgt_dict,
+                    remove_bpe=args.remove_bpe,
+                )
 
-            for i, sample_id in enumerate(sample['id'].tolist()):
-                # Remove padding
-                src_tokens = utils.strip_pad(sample['net_input']['src_tokens'][i, :], tgt_dict.pad())
-                target_tokens = utils.strip_pad(sample['target'][i, :], tgt_dict.pad()).int().cpu()
-                src_str = src_dict.string(src_tokens, args.remove_bpe)
-                target_str = tgt_dict.string(target_tokens, args.remove_bpe, escape_unk=True)
+                # Score only the top hypothesis
+                if j == 0:
+                    #if align_dict is not None or args.remove_bpe is not None:
+                    #    # Convert back to tokens for evaluation with unk replacement and/or without BPE
+                    #    target_tokens = tgt_dict.encode_line(target_str, add_if_not_exist=True)
+                    #if hasattr(scorer, 'add_string'):
+                    #    self.scorer.add_string(target_str, hypo_str)
+                    #else:
+                    #self.scorer.add(target_tokens, hypo_tokens)
+                    # print(hypo_str)
+                    # print(target_str)
+                    hypo_str = re.sub(regex, "", hypo_str, 0, re.MULTILINE)
+                    target_str = re.sub(regex, "", target_str, 0, re.MULTILINE)
+                    to_score.append((target_str.split(), hypo_str.split()))
 
-                # Process top predictions
-                for j, hypo in enumerate(hypos[i][:args.nbest]):
-                    hypo_tokens, hypo_str, alignment = utils.post_process_prediction(
-                        hypo_tokens=hypo['tokens'].int().cpu(),
-                        src_str=src_str,
-                        alignment=hypo['alignment'],
-                        align_dict=self.align_dict,
-                        tgt_dict=tgt_dict,
-                        remove_bpe=args.remove_bpe,
-                    )
-
-                    # Score only the top hypothesis
-                    if j == 0:
-                        #if align_dict is not None or args.remove_bpe is not None:
-                        #    # Convert back to tokens for evaluation with unk replacement and/or without BPE
-                        #    target_tokens = tgt_dict.encode_line(target_str, add_if_not_exist=True)
-                        #if hasattr(scorer, 'add_string'):
-                        #    self.scorer.add_string(target_str, hypo_str)
-                        #else:
-                        #self.scorer.add(target_tokens, hypo_tokens)
-                        hypo_str = re.sub(regex, "", hypo_str, 0, re.MULTILINE)
-                        target_str = re.sub(regex, "", target_str, 0, re.MULTILINE)
-                        to_score.append((target_str.split(), hypo_str.split()))
-
-            score = self.scorer.score(to_score)
-            print(score)
-
+        return to_score
 
 def main(args):
     assert args.path is not None, '--path required for generation!'
@@ -211,31 +317,20 @@ def main(args):
         if use_cuda:
             model.cuda()
 
-    # Load dataset (possibly sharded)
-    itr = task.get_batch_iterator(
-        dataset=task.dataset(args.gen_subset),
-        max_tokens=args.max_tokens,
-        max_sentences=args.max_sentences,
-        max_positions=utils.resolve_max_positions(
-            task.max_positions(),
-            *[model.max_positions() for model in models]
-        ),
-        ignore_invalid_inputs=args.skip_invalid_size_inputs_valid_test,
-        required_batch_size_multiple=args.required_batch_size_multiple,
-        num_shards=args.num_shards,
-        shard_id=args.shard_id,
-        num_workers=args.num_workers,
-    ).next_epoch_itr(shuffle=False)
-
-    sample = next(itr)
-
     # Initialize generator
-    generator = task.build_generator(args)
 
-    scorer = RougeScorer()
+    scorer = TrueRougeScorer()
     gridsearch = GridSearch(parameters, args, task, models, scorer)
 
-    gridsearch.fit(sample)
+    scores = gridsearch.fit()
+
+    print('top scores')
+
+    asc_scores = sorted(scores, key=lambda x: (x[1]['ROUGE-L-F (avg)'], x[1]['ROUGE-2-F (avg)'], x[1]['ROUGE-1-F (avg)']))
+    for score in asc_scores:
+        print(score[0])
+        print(score[1])
+        print('------')
 
 
 def cli_main():

@@ -28,8 +28,6 @@ from torch.utils.data import (
     TensorDataset
 )
 
-from torch.nn.utils.rnn import pad_sequence
-
 from transformers import AdamW, get_linear_schedule_with_warmup
 from transformers import (
     WEIGHTS_NAME,
@@ -42,31 +40,46 @@ from transformers import (
     CamembertConfig, CamembertTokenizer
 )
 
-from simpletransformers.experimental.classification.classification_utils import (
+from simpletransformers.classification.classification_utils import (
     InputExample,
     convert_examples_to_features
 )
 
-from simpletransformers.experimental.classification.transformer_models.bert_model import BertForSequenceClassification
-from simpletransformers.experimental.classification.transformer_models.roberta_model import RobertaForSequenceClassification
-from simpletransformers.experimental.classification.transformer_models.xlm_model import XLMForSequenceClassification
-from simpletransformers.experimental.classification.transformer_models.xlnet_model import XLNetForSequenceClassification
-from simpletransformers.experimental.classification.transformer_models.distilbert_model import DistilBertForSequenceClassification
-from simpletransformers.experimental.classification.transformer_models.albert_model import AlbertForSequenceClassification
-from simpletransformers.experimental.classification.transformer_models.camembert_model import CamembertForSequenceClassification
+from simpletransformers.classification.transformer_models.bert_model import BertForSequenceClassification
+from simpletransformers.classification.transformer_models.roberta_model import RobertaForSequenceClassification
+from simpletransformers.classification.transformer_models.xlm_model import XLMForSequenceClassification
+from simpletransformers.classification.transformer_models.xlnet_model import XLNetForSequenceClassification
+from simpletransformers.classification.transformer_models.distilbert_model import DistilBertForSequenceClassification
+from simpletransformers.classification.transformer_models.albert_model import AlbertForSequenceClassification
+from simpletransformers.classification.transformer_models.camembert_model import CamembertForSequenceClassification
 
+from ray import tune
+
+def print_gpu_obj():
+    import gc
+    GPU_count = 0
+    Pinned_count = 0
+    for tracked_object in gc.get_objects():
+        if torch.is_tensor(tracked_object):
+            if tracked_object.is_cuda:
+                GPU_count+=1
+            if tracked_object.is_pinned():
+                Pinned_count+=1
+            
+
+    print("There are {} cuda objects".format(GPU_count))
+    print("There are {} pinned objects".format(Pinned_count))
 
 class ClassificationModel:
-    def __init__(self, model_type, model_name, num_labels=None, weight=None, sliding_window=False, args=None, use_cuda=True):
+    def __init__(self, model_type, model_name, num_labels=None, weight=None, args=None, use_cuda=True):
         """
         Initializes a ClassificationModel model.
 
         Args:
-            model_type: The type of model (bert, xlnet, xlm, roberta, distilbert, albert, camembert)
+            model_type: The type of model (bert, xlnet, xlm, roberta, distilbert)
             model_name: Default Transformer model name or path to a directory containing Transformer model file (pytorch_nodel.bin).
             num_labels (optional): The number of labels or classes in the dataset.
             weight (optional): A list of length num_labels containing the weights to assign to each label for loss calculation.
-            sliding_window (optional): Use a sliding window when tokenizing to prevent truncating long sequences. Default = False.
             args (optional): Default args will be used if this parameter is not provided. If provided, it should be a dict containing the args that should be changed in the default args.
             use_cuda (optional): Use GPU if available. Setting to False will force model to use CPU only.
         """
@@ -89,9 +102,7 @@ class ClassificationModel:
             self.config = config_class.from_pretrained(model_name)
             self.num_labels = self.config.num_labels
         self.tokenizer = tokenizer_class.from_pretrained(model_name)
-        self.num_labels = num_labels
         self.weight = weight
-        self.sliding_window = sliding_window
 
         if use_cuda:
             if torch.cuda.is_available():
@@ -101,10 +112,10 @@ class ClassificationModel:
         else:
             self.device = "cpu"
 
-        if self.weight:
-            self.model = model_class.from_pretrained(model_name, config=self.config, weight=torch.Tensor(self.weight).to(self.device), sliding_window=self.sliding_window)
+        if self.weight is not None:
+            self.model = model_class.from_pretrained(model_name, config=self.config, weight=torch.Tensor(self.weight).to(self.device))
         else:
-            self.model = model_class.from_pretrained(model_name, config=self.config, sliding_window=self.sliding_window)
+            self.model = model_class.from_pretrained(model_name, config=self.config)
 
         self.results = {}
 
@@ -126,11 +137,12 @@ class ClassificationModel:
             'warmup_steps': 0,
             'max_grad_norm': 1.0,
 
-            'stride': False,
-
             'logging_steps': 50,
             'save_steps': 2000,
+            'eval_steps': 2000,
             'evaluate_during_training': False,
+
+            'log_tune': False,
 
             'overwrite_output_dir': False,
             'reprocess_input_data': False,
@@ -149,13 +161,10 @@ class ClassificationModel:
 
         self.args['model_name'] = model_name
         self.args['model_type'] = model_type
-        
+
         if model_type == 'camembert':
             warnings.warn("use_multiprocessing automatically disabled as CamemBERT fails when using multiprocessing for feature conversion.")
             self.args['use_multiprocessing'] = False
-            
-        if self.args['stride'] and not sliding_window:
-            warnings.warn("Stride argument specified but sliding_window is disabled. Stride will be ignored.")
 
     def train_model(self, train_df, multi_label=False, output_dir=None, show_running_loss=True, args=None, eval_df=None):
         """
@@ -199,17 +208,17 @@ class ClassificationModel:
         train_dataset = self.load_and_cache_examples(train_examples)
         global_step, tr_loss = self.train(train_dataset, output_dir, show_running_loss=show_running_loss, eval_df=eval_df)
 
-        if not os.path.exists(output_dir):
-            os.makedirs(output_dir)
+        # if not os.path.exists(output_dir):
+        #     os.makedirs(output_dir)
 
-        model_to_save = self.model.module if hasattr(self.model, "module") else self.model
-        model_to_save.save_pretrained(output_dir)
-        self.tokenizer.save_pretrained(output_dir)
-        torch.save(self.args, os.path.join(output_dir, "training_args.bin"))
+        # model_to_save = self.model.module if hasattr(self.model, "module") else self.model
+        # model_to_save.save_pretrained(output_dir)
+        # self.tokenizer.save_pretrained(output_dir)
+        # torch.save(self.args, os.path.join(output_dir, "training_args.bin"))
 
         print("Training of {} model complete. Saved to {}.".format(self.args["model_type"], output_dir))
+        
 
-    
     def train(self, train_dataset, output_dir, show_running_loss=True, eval_df=None):
         """
         Trains the model on train_dataset.
@@ -239,8 +248,16 @@ class ClassificationModel:
         warmup_steps = math.ceil(t_total * args["warmup_ratio"])
         args["warmup_steps"] = warmup_steps if args["warmup_steps"] == 0 else args["warmup_steps"]
 
-        optimizer = AdamW(optimizer_grouped_parameters, lr=args["learning_rate"], eps=args["adam_epsilon"])
-        scheduler = get_linear_schedule_with_warmup(optimizer, num_warmup_steps=args["warmup_steps"], num_training_steps=t_total)
+        if not hasattr(self, 'optimizer') or not hasattr():
+            self.optimizer = AdamW(optimizer_grouped_parameters, lr=args["learning_rate"], eps=args["adam_epsilon"])
+            self.scheduler = get_linear_schedule_with_warmup(self.optimizer, num_warmup_steps=args["warmup_steps"], num_training_steps=t_total)
+
+        # Check if saved optimizer or scheduler states exist
+        if os.path.isfile(os.path.join(self.args['model_name'], 'optimizer.pt')) and os.path.isfile(os.path.join(self.args['model_name'], 'scheduler.pt')):
+            # Load in optimizer and scheduler states
+            print('LOADING OPTIMIZER')
+            self.optimizer.load_state_dict(torch.load(os.path.join(self.args['args.model_name'], 'optimizer.pt')))
+            self.scheduler.load_state_dict(torch.load(os.path.join(self.args['args.model_name'], 'scheduler.pt')))
 
         if args["fp16"]:
             try:
@@ -249,7 +266,7 @@ class ClassificationModel:
                 raise ImportError(
                     "Please install apex from https://www.github.com/nvidia/apex to use fp16 training.")
 
-            model, optimizer = amp.initialize(model, optimizer, opt_level=args["fp16_opt_level"])
+            model, optimizer = amp.initialize(model, self.optimizer, opt_level=args["fp16_opt_level"])
 
         if args["n_gpu"] > 1:
             model = torch.nn.DataParallel(model)
@@ -263,20 +280,19 @@ class ClassificationModel:
         for _ in train_iterator:
             # epoch_iterator = tqdm(train_dataloader, desc="Iteration")
             for step, batch in enumerate(tqdm(train_dataloader, desc="Current iteration", disable=args['silent'])):
-                batch = tuple(t.to(self.device) for t in batch)
+                batch = tuple(t.to(device) for t in batch)
 
                 inputs = self._get_inputs_dict(batch)
-                if self.sliding_window:
-                    outputs = model(inputs)
-                else:
-                    outputs = model(**inputs)
+                outputs = model(**inputs)
                 # model outputs are always tuple in pytorch-transformers (see doc)
                 loss = outputs[0]
-                if show_running_loss:
-                    print("\rRunning loss: %f" % loss, end="")
 
                 if args['n_gpu'] > 1:
                     loss = loss.mean()  # mean() to average on multi-gpu parallel training
+                    
+                if show_running_loss:
+                    print("\rRunning loss: %f" % loss, end="")
+
                 if args["gradient_accumulation_steps"] > 1:
                     loss = loss / args["gradient_accumulation_steps"]
 
@@ -290,24 +306,28 @@ class ClassificationModel:
 
                 tr_loss += loss.item()
                 if (step + 1) % args["gradient_accumulation_steps"] == 0:
-                    optimizer.step()
-                    scheduler.step()  # Update learning rate schedule
+                    self.optimizer.step()
+                    self.scheduler.step()  # Update learning rate schedule
                     model.zero_grad()
                     global_step += 1
 
                     if args["logging_steps"] > 0 and global_step % args["logging_steps"] == 0:
                         # Log metrics
-                        tb_writer.add_scalar("lr", scheduler.get_lr()[0], global_step)
+                        tb_writer.add_scalar("lr", self.scheduler.get_lr()[0], global_step)
                         tb_writer.add_scalar("loss", (tr_loss - logging_loss)/args["logging_steps"], global_step)
                         logging_loss = tr_loss
 
-                    if args["save_steps"] > 0 and global_step % args["save_steps"] == 0:
-                        if args['evaluate_during_training']:
+                    if args['evaluate_during_training'] and args["eval_steps"] > 0 and global_step % args["eval_steps"] == 0:
+                        print_gpu_obj()
                         # Only evaluate when single GPU otherwise metrics may not average well
-                            results, _, _ = self.eval_model(eval_df, verbose=True)
-                            for key, value in results.items():
-                                tb_writer.add_scalar('eval_{}'.format(key), value, global_step)
-                                
+                        results, _, _ = self.eval_model(eval_df, verbose=True)
+                        print_gpu_obj()
+                        if args['log_tune']:
+                            tune.track.log(**results)
+                        for key, value in results.items():
+                            tb_writer.add_scalar('eval_{}'.format(key), value, global_step)
+
+                    if args["save_steps"] > 0 and global_step % args["save_steps"] == 0:
                         # Save model checkpoint
                         output_dir_current = os.path.join(output_dir, "checkpoint-{}".format(global_step))
 
@@ -395,11 +415,7 @@ class ClassificationModel:
             with torch.no_grad():
                 inputs = self._get_inputs_dict(batch)
 
-                if self.sliding_window:
-                    outputs = model(inputs)
-                else:
-                    outputs = model(**inputs)
-                
+                outputs = model(**inputs)
                 tmp_eval_loss, logits = outputs[:2]
 
                 if  multi_label:
@@ -408,22 +424,14 @@ class ClassificationModel:
 
             nb_eval_steps += 1
 
-            if self.sliding_window:
-                if preds is None:
-                    preds = logits.detach().cpu().numpy()
-                    out_label_ids = inputs[0]["labels"].detach().cpu().numpy()
-                else:
-                    preds = np.append(preds, logits.detach().cpu().numpy(), axis=0)
-                    out_label_ids = np.append(
-                        out_label_ids, inputs[0]["labels"].detach().cpu().numpy(), axis=0)
+
+            if preds is None:
+                preds = logits.detach().cpu().numpy()
+                out_label_ids = inputs["labels"].detach().cpu().numpy()
             else:
-                if preds is None:
-                    preds = logits.detach().cpu().numpy()
-                    out_label_ids = inputs["labels"].detach().cpu().numpy()
-                else:
-                    preds = np.append(preds, logits.detach().cpu().numpy(), axis=0)
-                    out_label_ids = np.append(
-                        out_label_ids, inputs["labels"].detach().cpu().numpy(), axis=0)
+                preds = np.append(preds, logits.detach().cpu().numpy(), axis=0)
+                out_label_ids = np.append(
+                    out_label_ids, inputs["labels"].detach().cpu().numpy(), axis=0)
 
         eval_loss = eval_loss / nb_eval_steps
         model_outputs = preds
@@ -486,37 +494,20 @@ class ClassificationModel:
                 process_count=process_count,
                 multi_label=multi_label,
                 silent=args['silent'],
-                use_multiprocessing=args['use_multiprocessing'],
-                sliding_window=self.sliding_window,
-                stride=self.args['stride']
+                use_multiprocessing=args['use_multiprocessing']
             )
 
             if not no_cache:
                 torch.save(features, cached_features_file)
 
-        if self.sliding_window:
-            # features = pad_sequence([torch.tensor(features_per_sequence) for features_per_sequence in features])
-            all_input_ids = pad_sequence([torch.tensor([f.input_ids for f in features_per_sequence], dtype=torch.long) for features_per_sequence in features], batch_first=True)
-            all_input_mask = pad_sequence([torch.tensor([f.input_mask for f in features_per_sequence], dtype=torch.long) for features_per_sequence in features], batch_first=True)
-            all_segment_ids = pad_sequence([torch.tensor([f.segment_ids for f in features_per_sequence], dtype=torch.long) for features_per_sequence in features], batch_first=True)
+        all_input_ids = torch.tensor([f.input_ids for f in features], dtype=torch.long)
+        all_input_mask = torch.tensor([f.input_mask for f in features], dtype=torch.long)
+        all_segment_ids = torch.tensor([f.segment_ids for f in features], dtype=torch.long)
 
-            # all_input_ids = torch.tensor([f.input_ids for feature in features for f in feature], dtype=torch.long)
-            # all_input_mask = torch.tensor([f.input_mask for feature in features for f in feature], dtype=torch.long)
-            # all_segment_ids = torch.tensor([f.segment_ids for feature in features for f in feature], dtype=torch.long)
-
-            if output_mode == "classification":
-                all_label_ids = pad_sequence([torch.tensor([f.label_id for f in features_per_sequence], dtype=torch.long) for features_per_sequence in features], batch_first=True)
-            elif output_mode == "regression":
-                all_label_ids = pad_sequence([torch.tensor([f.label_id for f in features_per_sequence], dtype=torch.float) for features_per_sequence in features], batch_first=True)
-        else:
-            all_input_ids = torch.tensor([f.input_ids for f in features], dtype=torch.long)
-            all_input_mask = torch.tensor([f.input_mask for f in features], dtype=torch.long)
-            all_segment_ids = torch.tensor([f.segment_ids for f in features], dtype=torch.long)
-
-            if output_mode == "classification":
-                all_label_ids = torch.tensor([f.label_id for f in features], dtype=torch.long)
-            elif output_mode == "regression":
-                all_label_ids = torch.tensor([f.label_id for f in features], dtype=torch.float)
+        if output_mode == "classification":
+            all_label_ids = torch.tensor([f.label_id for f in features], dtype=torch.long)
+        elif output_mode == "regression":
+            all_label_ids = torch.tensor([f.label_id for f in features], dtype=torch.float)
 
         dataset = TensorDataset(all_input_ids, all_input_mask, all_segment_ids, all_label_ids)
 
@@ -607,12 +598,7 @@ class ClassificationModel:
 
             with torch.no_grad():
                 inputs = self._get_inputs_dict(batch)
-
-                if self.sliding_window:
-                    outputs = model(inputs)
-                else:
-                    outputs = model(**inputs)
-
+                outputs = model(**inputs)
                 tmp_eval_loss, logits = outputs[:2]
 
                 if  multi_label:
@@ -622,22 +608,12 @@ class ClassificationModel:
 
             nb_eval_steps += 1
 
-            if self.sliding_window:
-                if preds is None:
-                    preds = logits.detach().cpu().numpy()
-                    out_label_ids = inputs[0]["labels"].detach().cpu().numpy()
-                else:
-                    preds = np.append(preds, logits.detach().cpu().numpy(), axis=0)
-                    out_label_ids = np.append(
-                        out_label_ids, inputs[0]["labels"].detach().cpu().numpy(), axis=0)
+            if preds is None:
+                preds = logits.detach().cpu().numpy()
+                out_label_ids = inputs["labels"].detach().cpu().numpy()
             else:
-                if preds is None:
-                    preds = logits.detach().cpu().numpy()
-                    out_label_ids = inputs["labels"].detach().cpu().numpy()
-                else:
-                    preds = np.append(preds, logits.detach().cpu().numpy(), axis=0)
-                    out_label_ids = np.append(
-                        out_label_ids, inputs["labels"].detach().cpu().numpy(), axis=0)
+                preds = np.append(preds, logits.detach().cpu().numpy(), axis=0)
+                out_label_ids = np.append(out_label_ids, inputs["labels"].detach().cpu().numpy(), axis=0)
 
         eval_loss = eval_loss / nb_eval_steps
         model_outputs = preds
@@ -664,37 +640,14 @@ class ClassificationModel:
 
 
     def _get_inputs_dict(self, batch):
-        if self.sliding_window:
-            inputs_all = []
-            inputs = batch[0].permute(1, 0, 2)
-            attentions = batch[1].permute(1, 0, 2)
-            labels = batch[3].permute(1, 0)
+        inputs = {
+            "input_ids":      batch[0],
+            "attention_mask": batch[1],
+            "labels":         batch[3]
+        }
 
-            if self.args["model_type"] != "distilbert":
-                tokens = batch[2].permute(1, 0, 2) if self.args["model_type"] in ["bert", "xlnet"] else None
+        # XLM, DistilBERT and RoBERTa don't use segment_ids
+        if self.args["model_type"] != "distilbert":
+            inputs["token_type_ids"] = batch[2] if self.args["model_type"] in ["bert", "xlnet"] else None
 
-            
-            for i in range(len(labels)):
-                input_single = {
-                    "input_ids":      inputs[i],
-                    "attention_mask": attentions[i],
-                    "labels":         labels[i]
-                }
-
-                # XLM, DistilBERT and RoBERTa don't use segment_ids
-                if self.args["model_type"] != "distilbert":
-                    input_single["token_type_ids"] = tokens[i] if self.args["model_type"] in ["bert", "xlnet"] else None
-                inputs_all.append(input_single)
-            return inputs_all
-        else:
-            inputs = {
-                "input_ids":      batch[0],
-                "attention_mask": batch[1],
-                "labels":         batch[3]
-            }
-
-            # XLM, DistilBERT and RoBERTa don't use segment_ids
-            if self.args["model_type"] != "distilbert":
-                inputs["token_type_ids"] = batch[2] if self.args["model_type"] in ["bert", "xlnet"] else None
-
-            return inputs
+        return inputs

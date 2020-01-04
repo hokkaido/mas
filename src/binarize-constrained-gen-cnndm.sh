@@ -1,7 +1,7 @@
 
 PARADIR=datasets/cnndm-constrained-510/k16/preprocessed-core
-PARADIR_GEN=datasets/cnndm-constrained-510/k16-generated/preprocessed-core
-PROCDIR_GEN=datasets/cnndm-constrained-510/k16-generated/core
+PARADIR_GEN=datasets/cnndm-constrained-510/k16-ft/preprocessed-core
+PROCDIR_GEN=datasets/cnndm-constrained-510/k16-ft/core
 
 fairseq-preprocess \
     --user-dir deps/MASS/MASS-summarization/mass --task masked_s2s \
@@ -12,8 +12,8 @@ fairseq-preprocess \
     --fp16 \
 
 PARADIR=datasets/cnndm-constrained-510/k16/preprocessed-entities
-PARADIR_GEN=datasets/cnndm-constrained-510/k16-generated/preprocessed-entities
-PROCDIR_GEN=datasets/cnndm-constrained-510/k16-generated/entities
+PARADIR_GEN=datasets/cnndm-constrained-510/k16-ft/preprocessed-entities
+PROCDIR_GEN=datasets/cnndm-constrained-510/k16-ft/entities
 
 fairseq-preprocess \
     --user-dir deps/MASS/MASS-summarization/mass --task masked_s2s \
