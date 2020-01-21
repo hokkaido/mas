@@ -1,4 +1,4 @@
-fairseq-train datasets/cnndm-augmented-510/ \
+fairseq-train datasets/xsum/ \
     --user-dir deps/MASS/MASS-summarization/mass --task augmented_summarization_mass --arch summarization_mass_base \
     --optimizer adam --adam-betas '(0.9, 0.98)' --clip-norm 0.0 \
     --lr 0.0005 --min-lr 1e-09 \
@@ -7,7 +7,7 @@ fairseq-train datasets/cnndm-augmented-510/ \
     --criterion copy_generator_loss \
     --update-freq 16 --max-tokens 2048 \
     --ddp-backend=no_c10d --max-epoch 25 \
-    --max-source-positions 512 --max-target-positions 512 \
     --copy-attn \
+    --max-source-positions 512 --max-target-positions 512 \
     --skip-invalid-size-inputs-valid-test \
     --load-from-pretrained-model datasets/mass-base-uncased/mass-base-uncased.pt \

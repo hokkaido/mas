@@ -12,7 +12,7 @@ from hpbandster.core.worker import Worker
 from typing import Mapping, Iterable
 from itertools import product
 import torch
-
+import random
 from fairseq import bleu, checkpoint_utils, options, progress_bar, tasks, utils
 from fairseq.meters import StopwatchMeter, TimeMeter
 import numpy as np
@@ -57,9 +57,10 @@ def run_p2r(summ_path,
     if not rouge_args:
         rouge_args = [
             '-c', 95,
-            '-r', 1000,
             '-n', 2,
-            '-a']
+            '-b', 75,
+            '-w', 1.2,
+            '-m']
         if stemming:
             rouge_args.append("-m")
 
@@ -72,23 +73,46 @@ def run_p2r(summ_path,
     return output
 
 def parse_rouge(text):
-    r1 = float(text.partition('ROUGE-1 Average_F: ')[2][:7])
-    r2 = float(text.partition('ROUGE-2 Average_F: ')[2][:7])
-    r3 = float(text.partition('ROUGE-L Average_F: ')[2][:7])
+    r1 = float(text.partition('ROUGE-1 Average_R: ')[2][:7])
+    r2 = float(text.partition('ROUGE-2 Average_R: ')[2][:7])
+    r3 = float(text.partition('ROUGE-L Average_R: ')[2][:7])
+    f1 = float(text.partition('ROUGE-1 Average_F: ')[2][:7])
+    f2 = float(text.partition('ROUGE-2 Average_F: ')[2][:7])
+    f3 = float(text.partition('ROUGE-L Average_F: ')[2][:7])
     return {
-        'ROUGE-1-F (avg)': r1,
-        'ROUGE-2-F (avg)': r2,
-        'ROUGE-L-F (avg)': r3,
+        'ROUGE-1-R (avg)': r1,
+        'ROUGE-2-R (avg)': r2,
+        'ROUGE-L-R (avg)': r3,
+        'ROUGE-1-F (avg)': f1,
+        'ROUGE-2-F (avg)': f2,
+        'ROUGE-L-F (avg)': f3,
         }
 
 
+def constrain_length(sentence, max_len):
+    segments = sentence.split(' ')
+    constrained = ''
+    print(len(sentence))
+    for i, word in enumerate(segments):
+        if len(constrained) + 1 + len(word) > max_len:
+            return constrained
+        if i > 0:
+            constrained += ' '
+        constrained += word
+    return constrained
+
 class TrueRougeScorer:
-    def score(self, pairs):
+    def score(self, pairs, constrain=-1):
         with tempfile.NamedTemporaryFile(mode = "a+") as h, tempfile.NamedTemporaryFile(mode = "a+") as t:
             for pair in pairs:
                 target, hypo = pair
-                print(' '.join(target), file=t, flush=True)
-                print(' '.join(hypo), file=h, flush=True)
+                target = ' '.join(target)
+                hypo = ' '.join(hypo)
+                if constrain > 0:
+                    hypo = constrain_length(hypo, constrain)
+              
+                print(target, file=t, flush=True)
+                print(hypo, file=h, flush=True)
             
             output = run_p2r(t.name, h.name)
 
@@ -177,7 +201,7 @@ class BeamWorker(Worker):
 
         summaries = []      
 
-        for i in range(int(budget)):
+        for i in random.sample(range(len(self.samples)), int(budget)):
             sample = self.samples[i]
             summaries.extend(self.gen_candidates(config, sample))
         score = self.scorer.score(summaries)
@@ -185,7 +209,7 @@ class BeamWorker(Worker):
         print(score)
 
         return {
-            'loss': -score['ROUGE-1-F (avg)'],
+            'loss': -score[self.args.hbp_metric],
             'info': score
         }
 
@@ -269,7 +293,29 @@ def get_xsum_space():
     cs.add_hyperparameters([beam, ngram, lenpen, min_len, max_len_b])
     return cs
 
+def get_duc2004_space():
+    cs = CS.ConfigurationSpace(seed=1)
+    beam = CSH.CategoricalHyperparameter('beam', choices=[2, 3, 4, 5, 6])
+    ngram = CSH.CategoricalHyperparameter('no_repeat_ngram_size', choices=[2, 3, 4])
+    lenpen = CSH.UniformFloatHyperparameter('lenpen', lower=0.1, upper=2.0, q=0.1)   
+    min_len = CSH.UniformIntegerHyperparameter('min_len', lower=5, upper=19)
+    max_len_b = CSH.CategoricalHyperparameter('max_len_b', choices=[20])
+    max_len_a = CSH.CategoricalHyperparameter('max_len_a', choices=[0])
+    cs.add_hyperparameters([beam, ngram, lenpen, min_len, max_len_b, max_len_a])
+    return cs
+
+def get_conf_space(args):
+    confs = {
+        'cnndm': get_cnndm_space,
+        'xsum': get_xsum_space,
+        'duc2004': get_duc2004_space
+    }
+
+    return confs[args.hpb_config]()
+
 def infer_run_id_from_args(args):
+    if getattr(args, 'hpb_run_id', False):
+        return args.hpb_run_id
     return os.path.basename(os.path.dirname(args.path))
 
 def main(args):
@@ -285,7 +331,7 @@ def main(args):
         w.run(background=False)
         exit(0)
 
-    result_logger = hpres.json_result_logger(directory=run_dir, overwrite=False)
+    result_logger = hpres.json_result_logger(directory=run_dir, overwrite=getattr(args, 'hpb_overwrite_run', False))
 
     # Step 1: Start a nameserver
     # Every run needs a nameserver. It could be a 'static' server with a
@@ -307,7 +353,7 @@ def main(args):
     # Now we can create an optimizer object and start the run.
     # Here, we run BOHB, but that is not essential.
     # The run method will return the `Result` that contains all runs performed.
-    bohb = BOHB(configspace = get_cnndm_space(),
+    bohb = BOHB(configspace = get_conf_space(args),
                 run_id = run_id, nameserver='127.0.0.1',
                 result_logger=result_logger,
                 min_budget=args.hpb_min_budget, max_budget=args.hpb_max_budget
@@ -335,12 +381,16 @@ def main(args):
 
 def cli_main():
     parser = options.get_generation_parser()
-    parser.add_argument('--hpb_min_budget',   type=float, help='Minimum budget used during the optimization.',    default=2)
-    parser.add_argument('--hpb_max_budget',   type=float, help='Maximum budget used during the optimization.',    default=16)
-    parser.add_argument('--hpb_n_iterations', type=int,   help='Number of iterations performed by the optimizer', default=16)
+    parser.add_argument('--hpb_min_budget',   type=float, help='Minimum budget used during the optimization.',    default=1)
+    parser.add_argument('--hpb_max_budget',   type=float, help='Maximum budget used during the optimization.',    default=32)
+    parser.add_argument('--hpb_n_iterations', type=int,   help='Number of iterations performed by the optimizer', default=32)
     parser.add_argument('--hpb_n_workers', type=int,   help='Number of workers to run in parallel.', default=2)
     parser.add_argument('--hpb_worker', help='Flag to turn this into a worker process', action='store_true')
+    parser.add_argument('--hpb_overwrite_run', help='Flag to turn this into a worker process', action='store_true')
     parser.add_argument('--hpb_runs_dir', type=str,   help='location of runs dir', default='runs')
+    parser.add_argument('--hpb_run_id', type=str,   help='run id')
+    parser.add_argument('--hpb_metric', type=str,   help='Which metric to optimize', default='ROUGE-1-F (avg)')
+    parser.add_argument('--hpb_config', type=str,   help='config space, either cnndm, xsum or duc2004')
     args = options.parse_args_and_arch(parser)
     main(args)
 

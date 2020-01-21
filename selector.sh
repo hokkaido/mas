@@ -1,0 +1,1 @@
+python src/select_classification_sentences.py --output-path=datasets/constrained_classification/k16_window/k16.valid --article-path=datasets/outdated/cnndm/finished_files_upper/valid.article.txt --abstract-path=datasets/outdated/cnndm/finished_files_upper/valid.abstract.txt

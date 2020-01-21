@@ -3,6 +3,7 @@ DATADIR=datasets/xsum
 USERDIR=deps/MASS/MASS-summarization/mass
 BATCH_SIZE=64
 NUM_WORKERS=2
+CONFIG=xsum
 
 python gen-hpb-search.py $DATADIR --path $MODEL \
     --user-dir $USERDIR --task augmented_summarization_mass \
@@ -12,5 +13,6 @@ python gen-hpb-search.py $DATADIR --path $MODEL \
     --embed-entities-encoder \
     --fp16 \
     --memory-efficient-fp16 \
+    --hpb_config $CONFIG \
     --hpb_worker
 

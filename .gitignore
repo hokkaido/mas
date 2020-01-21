@@ -9,3 +9,8 @@ __pycache__
 runs
 eval
 experiments
+notebooks/en_core_web_sm_lower
+resources
+flair_checkpoints
+*.pkl
+models

@@ -1,5 +1,5 @@
 MODEL=checkpoints/cnndm-constrained-510-ent-enc-k16/checkpoint_best.pt
-DATADIR=datasets/cnndm-constrained-510/k16-ft
+DATADIR=datasets/cnndm-constrained-510/k16-xlnet
 USERDIR=deps/MASS/MASS-summarization/mass
 
 fairseq-generate $DATADIR --path $MODEL \
