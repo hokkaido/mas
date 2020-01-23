@@ -10,19 +10,39 @@ Needs to be downloaded from
 
 https://modelrelease.blob.core.windows.net/mass/mass-base-uncased.tar.gz
 
+
 ## Data 
 
 ### Data acquisition
 
+#### Conventions
+
+There is the following convention where we put our raw downloaded datasets
+
+    datasets/DATASET_NAME/raw
+
+So for instance `datasets/cnndm/raw`, `datasets/xsum/raw`, `datasets/duc2004/raw` and so on.
+
+
 #### CNN-DM
 
+Here, we mainly need the acquire the following files / directories:
 
+cnn_stories_tokenized
+dm_stories_tokenized
+url_lists
+
+There are various ways to do this.
 
 #### XSum
+
+The official way:
 
 https://github.com/EdinburghNLP/XSum
 
 Please follow the instructions to download the entire data set. It will probably take quite some time and re-attempts to download all files.
+
+However, it's much easier to download XYZ.
 
 ### Data processing
 
@@ -48,15 +68,17 @@ The data can be tokenized, but doesn't have to be. More important is that the da
 
 CNN-DM needs its own conversion here
 
-    python cleanup-cnndm.py --max-len 511 --output=datasets/cnndm/unprocessed
+    python --input-dir datasets/cnndm/raw --output-dir datasets/cnndm/preprocessed
 
 AS does XSum needs its own conversion here
 
-    python cleanup-xsum.py --max-len 511 --output=datasets/cnndm/unprocessed
+    python cleanup.py --config xsum --input-dir datasets/xsum/raw --output-dir datasets/xsum/preprocessed
+
+This requires the splits json to be present.
 
 As does DUC2004
 
-    pythjon cleanup-duc2004.
+    python cleanup.py --config duc2004 --input-dir datasets/duc2004/raw --output-dir datasets/duc2004/preprocessed
 
 #### Preprocessing
 
@@ -65,28 +87,48 @@ Tokenizes the data, detects named entities, this will produce two folders:
 * preprocessed-core
 * preprocessed-entities
 
-An example
+There is a python script that does this:
 
-    ./encode-augmented-cnndm.sh
+    $DATA_DIR=datasets/cnndm
+    $SPLIT=train
+    $ENC_OUTDIR=${DATA_DIR}/preprocessed-core
+    $ENT_OUTDIR=${DATA_DIR}/preprocessed-entities
+
+    python preprocess.py \
+        --inputs ${DATA_DIR}/preprocessed/${SPLIT}.abstract.txt \
+        --enc-outputs ${ENC_OUTDIR}/train.tgt \
+        --ent-outputs ${ENT_OUTDIR}/${SPLIT}.tgt \
+        --max-len 511 \
+        --workers 40
+
+However, it is probably easier to use or adapt one of the provided bash scripts:
+
+    ./scripts/preprocess-cnndm.sh
+    ./scripts/preprocess-duc2004.sh
+    ./scripts/preprocess-xsum.sh
 
 #### Binarization
 
 The preprocessed data needs to be binarized so that `fairseq` can use it. This step requires a
 dictionary for both `core` and `entities`. The dictionary for the the base model can be found
-in it s
+in it downloaded state. The dictionary for the entities can be found in `datasets/cnn
 
 This step will produce two folders
 
 * core
 * entities
 
-An example
+There are example scripts inside the  `scripts` folder
 
-    ./binarize-augmented-cnndm.sh
+    ./scripts/binarize-cnndm.sh
+
+
 
 ## Approaches
 
 ### In-Domain Pretraining
+
+
 
 ### Sentence Selection
 
@@ -116,7 +158,7 @@ Entities can be embedded on both the encoder side with the following args
 
 An example can be found at
 
-    ./scripts/examples/train-with-entities.sh
+    ./scripts/examples/finetune-with-entities.sh
 
 ### Embedding Segments
 
@@ -136,7 +178,7 @@ There are four arguments that control the embedding of segment positions:
 
 An example can be found at
 
-    ./scripts/examples/train-with-segments.sh
+    ./scripts/examples/finetune-with-segments.sh
 
 
 ### Sentence Selection
