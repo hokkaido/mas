@@ -1,7 +1,7 @@
 import spacy
 import argparse
 import transformers
-from classification_model import ClassificationModel
+from .classification_model import ClassificationModel
 import pandas as pd
 from sklearn.utils import class_weight
 
@@ -35,6 +35,7 @@ def main():
         "--output-path",
         help="path to save constrained articles",
     )
+    
     parser.add_argument("--k", type=int, default=16)
     parser.add_argument("--batch-size", type=int, default=1000)
 

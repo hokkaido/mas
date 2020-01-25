@@ -179,7 +179,13 @@ After this step, we need to preprocess and binarize this data, you can use or ad
 
 #### Train classifier
 
-We have experimented with multiple classifiers, documented is the XlNet one:
+We have experimented with multiple classifiers, an example is provided for training one based on XLNet:
+
+    ./examples/train-selector.sh
+
+This will train a classifier and periodically check
+
+You can look at the progress with tensorboar
 
 #### Use classifier to constrain test set
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # coding: utf-8
-
+# Adapted from https://github.com/ThilinaRajapakse/simpletransformers/
 
 from __future__ import absolute_import, division, print_function
 
@@ -208,13 +208,13 @@ class ClassificationModel:
         train_dataset = self.load_and_cache_examples(train_examples)
         global_step, tr_loss = self.train(train_dataset, output_dir, show_running_loss=show_running_loss, eval_df=eval_df)
 
-        # if not os.path.exists(output_dir):
-        #     os.makedirs(output_dir)
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
 
-        # model_to_save = self.model.module if hasattr(self.model, "module") else self.model
-        # model_to_save.save_pretrained(output_dir)
-        # self.tokenizer.save_pretrained(output_dir)
-        # torch.save(self.args, os.path.join(output_dir, "training_args.bin"))
+        model_to_save = self.model.module if hasattr(self.model, "module") else self.model
+        model_to_save.save_pretrained(output_dir)
+        self.tokenizer.save_pretrained(output_dir)
+        torch.save(self.args, os.path.join(output_dir, "training_args.bin"))
 
         print("Training of {} model complete. Saved to {}.".format(self.args["model_type"], output_dir))
         
@@ -231,7 +231,7 @@ class ClassificationModel:
         model = self.model
         args = self.args
 
-        tb_writer = SummaryWriter()
+        tb_writer = SummaryWriter(logdir='tensorboard')
         train_sampler = RandomSampler(train_dataset)
         train_dataloader = DataLoader(train_dataset, sampler=train_sampler, batch_size=args["train_batch_size"])
 
