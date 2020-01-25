@@ -4,6 +4,22 @@
 
 The additions to 
 
+## Project structure
+
+| Folder      | Description |
+| ----------- | ----------- |
+| checkpoints   | Place where training checkpoints are stored.  |
+| datasets      | Location of data sets  |
+| eval           | Location for evaluation results  |
+| deps          | Git submodules  |
+| mas           | Various python modules  |
+| notebooks           | Several notebooks, especially for evaluation  |
+| scripts           | Training and so on   |
+
+
+
+
+
 ## MASS Base-Model
 
 Needs to be downloaded from 
