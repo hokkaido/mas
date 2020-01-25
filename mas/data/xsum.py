@@ -34,7 +34,7 @@ class XSumWriter:
 
     def write(self):
         split_dict = json.loads(open(self.splits_file).read())
-        split_types = ["test", "validation", "train"]
+        split_types = {"test": "test", "validation": "valid", "train": "train"}
 
         if not os.path.exists(self.output_dir):
             os.makedirs(self.output_dir)
@@ -42,8 +42,8 @@ class XSumWriter:
         count = 0
 
         for split in split_types:
-            docpath = os.path.join(self.output_dir, '{}.src'.format(split))
-            summarypath = os.path.join(self.output_dir, '{}.tgt'.format(split))
+            docpath = os.path.join(self.output_dir, '{}.src'.format(split_types[split]))
+            summarypath = os.path.join(self.output_dir, '{}.tgt'.format(split_types[split]))
 
             with open(docpath, mode='w+') as df, open(summarypath, mode='w+') as sf:
                 for docid in split_dict[split]:
@@ -53,8 +53,8 @@ class XSumWriter:
                         doc, summary = process_line(text)
                         df.write(doc + '\n')
                         sf.write(summary + '\n')
-                    if count % 1000 == 0:
-                        print(count)
+                    if count % 10000 == 0:
+                        print('XSum written {}'.format(count))
                     count += 1
 
 def main():

@@ -1,23 +1,21 @@
 #!/bin/bash
 
-EXPERIMENT=exp1
+EXPERIMENT=exp2-xsum
 TASK=augmented_summarization_mass
 EVALDIR=eval
 MODELDIR=checkpoints
-DATADIR=datasets/cnndm
+DATADIR=datasets/xsum
 USERDIR=deps/MASS/MASS-summarization/mass
 BATCH_SIZE=64
-BEAM_PARAMS="--beam 5 --min-len 45 --no-repeat-ngram-size 4 --max-len-b 183 --lenpen 2.0"
+BEAM_PARAMS="--beam 4 --min-len 5 --no-repeat-ngram-size 3 --max-len-b 50 --lenpen 1.9"
 
 declare -A MODELS
 
 MODELS=(
-    ['cnndm-reference']=''
-    ['cnndm-entities-encoder-segments-encoder']="--embed-entities-encoder --embed-segments-encoder --segment-tokens . --max-segments 128"
-    ['cnndm-entities-encoder-segments-encoder-decoder']="--embed-entities-encoder --embed-segments-encoder --embed-segments-decoder --segment-tokens . --max-segments 128"
-    ['cnndm-segments-encoder']="--embed-segments-encoder --segment-tokens . --max-segments 128"
-    ['cnndm-segments-encoder-decoder']="--embed-segments-encoder --embed-segments-decoder --segment-tokens . --max-segments 128"
-    ['cnndm-entities-encoder-decoder']="--embed-entities-encoder --embed-entities-decoder"
+    ['xsum-vanilla']=''
+    ['xsum-entities-encoder']="--embed-entities-encoder"
+    ['xsum-entities-encoder-segments-encoder']="--embed-entities-encoder --embed-segments-encoder --segment-tokens . --max-segments 128"
+    ['xsum-segments-encoder']="--embed-segments-encoder --segment-tokens . --max-segments 128"
 )
 
 # Save fairseq params for experiment

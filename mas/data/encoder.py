@@ -8,8 +8,8 @@ from multiprocessing import Pool
 
 from pytorch_transformers import BertTokenizer
 
-from tokenizer import MagicBertTokenizer
-from ner import ENTITY_TYPES, align_tokens
+from .tokenizer import MagicBertTokenizer
+from .ner import ENTITY_TYPES, align_tokens
 
 import spacy
 
@@ -79,12 +79,15 @@ class MultiprocessingEncoder(object):
                     tokens = self.encode(line)
                     mtokens = self.magic_encode(line)
                     entities = self.encode_entities(line, mtokens)
-                    enc_lines.append(" ".join(tokens[:self.max_tokens]))
-                    ent_lines.append(" ".join(entities[self.max_tokens]))
+
+                    if self.max_tokens is not None:
+                        tokens = tokens[:self.max_tokens]
+                        entities = entities[:self.max_tokens]
+                        
+                    enc_lines.append(" ".join(tokens))
+                    ent_lines.append(" ".join(entities))
                 except AssertionError:
                     print('ERROR')
-                    enc_lines.append(" ".join(tokens[:self.max_tokens]))
-                    ent_lines.append(" ".join(['NONE' for subword in tokens][:self.max_tokens]))
 
         assert len(enc_lines) == len(ent_lines)
         return ["PASS", enc_lines, ent_lines]

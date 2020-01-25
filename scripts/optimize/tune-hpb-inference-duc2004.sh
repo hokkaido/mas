@@ -4,9 +4,9 @@ USERDIR=deps/MASS/MASS-summarization/mass
 BATCH_SIZE=25
 NUM_WORKERS=2
 CONFIG=duc2004
-RUN_ID=duc2004-cnndm-test
+RUN_ID=duc2004-cnndm
 
-python gen-hpb-search.py $DATADIR --path $MODEL \
+python run_bohb.py $DATADIR --path $MODEL \
     --user-dir $USERDIR --task augmented_summarization_mass \
     --batch-size $BATCH_SIZE \
     --gen-subset test2 \
