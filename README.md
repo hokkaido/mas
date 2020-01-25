@@ -110,9 +110,9 @@ Tokenizes the data, detects named entities, limits the document lengths, this wi
 
 We have also provided individual bash scripts that should work out of the box if you have used the download and cleanup scripts above. They limit the output to 511 tokens per article or summary. **Warning**: This is a slow process (**hours**, not minutes), mainly due to the entity recognition step. If you run out of memory, try lowering the workers inside the scripts.
 
-    ./scripts/preprocess-cnndm.sh
-    ./scripts/preprocess-duc2004.sh
-    ./scripts/preprocess-xsum.sh
+    ./scripts/data/preprocess-cnndm.sh
+    ./scripts/data/preprocess-duc2004.sh
+    ./scripts/data/preprocess-xsum.sh
 
 There is also a python script that can be used for this:
 
@@ -141,9 +141,9 @@ This step will produce two folders
 
 There are example scripts inside the `scripts` folder.
 
-    ./scripts/binarize-cnndm.sh
-    ./scripts/binarize-duc2004.sh
-    ./scripts/binarize-xsum.sh
+    ./scripts/data/binarize-cnndm.sh
+    ./scripts/data/binarize-duc2004.sh
+    ./scripts/data/binarize-xsum.sh
 
 ## Approaches
 
@@ -155,13 +155,35 @@ There are example scripts inside the `scripts` folder.
 
 
 
+
 ### Sentence Selection
 
-Sentence selection needs a trained sentence classifier.
+Sentence selection needs two things:
+
+* A constrained train and validation data set
+* A trained sentence classifier
+
+
+#### Data preparation
+
+There is an example script that constrains CNN-DM, and creates class labels that can be adapted:
+
+    ./scripts/examples/constrain-cnndm.sh
+
+This will take a while and create files inside `datasets/cnndm-constrained/preprocessed` and `datasets/cnndm/labels`.
+
+After this step, we need to preprocess and binarize this data, you can use or adapt
+
+    ./scripts/data/preprocess-constrained-cnndm.sh
+    ./scripts/data/binarize-constrained.sh
 
 #### Train classifier
 
-See ....
+We have experimented with multiple classifiers, documented is the XlNet one:
+
+#### Use classifier to constrain test set
+
+
 
 #### Constrain data
 
@@ -212,8 +234,6 @@ Sentence selection requires a pre-constrained data set.
 
 ### Copy generator
 
-#### fairseq
-
 Copy generator can be enabled with
 
     --copy-attn
@@ -222,7 +242,7 @@ Copy generator can be enabled with
 
 An example can be found at
 
-    ./scripts/examples/train-with-copy.sh
+    ./scripts/examples/finetune-with-copy.sh
 
 ### In-Domain Pretraining
 

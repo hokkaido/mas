@@ -24,11 +24,10 @@ def entity_counts(doc):
         
     return c
 
-def rank_sentences(article_doc, abstract_doc):   
+def rank_sentences(article_sents, abstract_doc):   
     abstract_count = entity_counts(abstract_doc)
     ranked = []
-    i = 0
-    for sent in article_doc.sents:
+    for sent in article_sents:
         rank = 0
         for ent in sent.ents:
             if ent.text in abstract_count:
@@ -36,8 +35,7 @@ def rank_sentences(article_doc, abstract_doc):
             else:
                 rank += 0.5
         
-        heappush(ranked, RankedSentence(rank, i, sent.text))
-        i += 1
+        heappush(ranked, RankedSentence(rank, sent.doc._.sent_pos[sent.start], sent.text))
         
     return ranked
 
@@ -67,8 +65,11 @@ def lcs(a, b):
 
 def extract_ranked_sentences(article, abstract, k=8):
     start, end = lcs(article, abstract)
-    ranked_sentences = nlargest(k, rank_sentences(article[start:end].as_doc(), abstract))
-    return sorted(ranked_sentences, key=lambda x: x[1])
+    start_sent = article._.sent_pos[start]
+    end_sent = article._.sent_pos[end]
+    constrained = list(article.sents)[start_sent:end_sent]
+    ranked_sentences = nlargest(k, rank_sentences(constrained, abstract))
+    return sorted(ranked_sentences, key=lambda x: x.position)
 
 class SentenceSelector:
     def __init__(self, k):
@@ -80,9 +81,19 @@ class SentenceSelector:
 
     def confine_docs(self, article, abstract):
         if len(article) == 0:
-            return ''
+            return [], []
         ranked_sentences = extract_ranked_sentences(article, abstract, self.k)
-        return ' '.join(s.text for s in ranked_sentences)
+        unranked_sentences = []
+
+        ranked_pos = { s.position for s in ranked_sentences }
+
+        for i, s in enumerate(article.sents):
+            if i in ranked_pos:
+                continue
+            else:
+                unranked_sentences.append(s)
+
+        return ranked_sentences, unranked_sentences
 
 
 spacy.tokens.Doc.set_extension("sent_pos", getter=get_sent_pos)
