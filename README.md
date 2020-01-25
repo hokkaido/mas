@@ -1,10 +1,10 @@
-# MAS Data Science - Transfer Learning for Text Summarization
+# Transfer Learning for 📝 Text Summarization
 
 ## Prerequisites
 
 The repository has been tested with Ubuntu 18.04 and CUDA 10.2. It requires Anaconda, git, wget and unzip to work.
 
-Activate conda environment and install immediate dependencies
+Create the conda environment and install immediate dependencies
 
     conda env create -f environment.yml
 
