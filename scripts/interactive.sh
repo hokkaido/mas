@@ -1,5 +1,5 @@
 MODEL=checkpoints/cnndm-entities-encoder-copy/checkpoint_best.pt
-DATADIR=datasets/cnndm-augmented-510/
+DATADIR=datasets/cnndm/
 USERDIR=deps/MASS/MASS-summarization/mass
 
 CUDA_LAUNCH_BLOCKING=1 fairseq-interactive $DATADIR --path $MODEL \

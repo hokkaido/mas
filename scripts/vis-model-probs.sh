@@ -1,5 +1,5 @@
 MODEL=checkpoints/cnndm-reference/checkpoint_best.pt
-DATADIR=datasets/cnndm-augmented-510/
+DATADIR=datasets/cnndm/
 USERDIR=deps/MASS/MASS-summarization/mass
 
 python vis-model-probs.py $DATADIR --path $MODEL \

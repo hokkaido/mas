@@ -10,4 +10,4 @@ fairseq-train datasets/xsum/ \
     --copy-attn \
     --max-source-positions 512 --max-target-positions 512 \
     --skip-invalid-size-inputs-valid-test \
-    --load-from-pretrained-model datasets/mass-base-uncased/mass-base-uncased.pt \
+    --load-from-pretrained-model checkpoints/mass-base-uncased/mass-base-uncased.pt \

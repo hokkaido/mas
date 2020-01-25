@@ -1,5 +1,5 @@
 MODEL=checkpoints/cnndm-ft-on-joint-pretrained/checkpoint_best.pt
-DATADIR=datasets/cnndm-augmented-510/
+DATADIR=datasets/cnndm/
 USERDIR=deps/MASS/MASS-summarization/mass
 
 fairseq-generate $DATADIR --path $MODEL \

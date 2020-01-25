@@ -4,7 +4,7 @@ TOTAL_UPDATES=125000
 MAX_TOKENS=4096
 UPDATE_FREQ=8
 
-fairseq-train datasets/cnndm-augmented-510/ \
+fairseq-train datasets/cnndm/ \
     --user-dir deps/MASS/MASS-summarization/mass --task masked_summarization_mass --arch summarization_mass_base \
     --criterion masked_lm \
     --optimizer adam --adam-betas '(0.9, 0.98)' --adam-eps 1e-6 --clip-norm 0.0 \

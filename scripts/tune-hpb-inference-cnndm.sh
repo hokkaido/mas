@@ -1,5 +1,5 @@
 MODEL=checkpoints/cnndm-entities-encoder-copy/checkpoint_best.pt
-DATADIR=datasets/cnndm-augmented-510
+DATADIR=datasets/cnndm
 USERDIR=deps/MASS/MASS-summarization/mass
 BATCH_SIZE=32
 NUM_WORKERS=2

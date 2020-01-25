@@ -4,7 +4,7 @@ TOTAL_UPDATES=300000
 MAX_TOKENS=4096
 UPDATE_FREQ=8
 
-fairseq-train datasets/cnndm-augmented-510/ \
+fairseq-train datasets/cnndm/ \
     --user-dir deps/MASS/MASS-summarization/mass --task masked_summarization_mass --arch summarization_mass_base \
     --optimizer adam --adam-betas '(0.9, 0.98)' --clip-norm 0.0 \
     --lr-scheduler inverse_sqrt --lr 0.0001  --max-update $TOTAL_UPDATES \
@@ -15,4 +15,4 @@ fairseq-train datasets/cnndm-augmented-510/ \
     --fp16 \
     --memory-efficient-fp16 \
     --skip-invalid-size-inputs-valid-test \
-    --load-from-pretrained-model datasets/mass-base-uncased/mass-base-uncased.pt \
+    --load-from-pretrained-model checkpoints/mass-base-uncased/mass-base-uncased.pt \

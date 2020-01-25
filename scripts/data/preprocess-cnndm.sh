@@ -3,6 +3,7 @@ ENT_OUTDIR=datasets/cnndm/preprocessed-entities
 
 mkdir -p $ENC_OUTDIR
 mkdir -p $ENT_OUTDIR
+
 for SPLIT in train valid test; do 
     python process.py \
         --inputs datasets/cnndm/preprocessed/${SPLIT}.abstract.txt \

@@ -12,4 +12,4 @@ fairseq-train datasets/cnndm/ \
     --memory-efficient-fp16 \
     --skip-invalid-size-inputs-valid-test \
     --copy-attn \
-    --load-from-pretrained-model datasets/mass-base-uncased/mass-base-uncased.pt \
+    --load-from-pretrained-model checkpoints/mass-base-uncased/mass-base-uncased.pt \

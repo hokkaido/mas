@@ -15,4 +15,4 @@ fairseq-train datasets/xsum/ \
     --fp16 \
     --memory-efficient-fp16 \
     --skip-invalid-size-inputs-valid-test \
-    --load-from-pretrained-model datasets/mass-base-uncased/mass-base-uncased.pt \
+    --load-from-pretrained-model checkpoints/mass-base-uncased/mass-base-uncased.pt \
