@@ -284,7 +284,11 @@ After the test set has been constrained, we need to preprocess and binarize the 
 
 #### Fine-Tune
 
-Now you can fine-tune and evaluate
+Now you can fine-tune and evaluate the constrained data set by adapting any of the example scripts.
+
+### Masked In-Domain Pretraining
+
+
 
 
 ## Hyperparameter optimization
