@@ -1,5 +1,13 @@
 # Transfer Learning for 📝 Text Summarization
 
+Presented approaches
+
+* Embedding named entities
+* Embedding segment positions
+* Adding copy-mechanism
+* Sentence selection
+* Masked In-Domain Pre-Training
+
 ## Prerequisites
 
 The repository has been tested with Ubuntu 18.04 and CUDA 10.2. It requires Anaconda, git, wget and unzip to work.
