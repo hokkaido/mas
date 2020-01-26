@@ -16,9 +16,25 @@ Create the conda environment and install immediate dependencies
 
     conda env create -f environment.yml
 
-Initialize git submodules
+Initialize git submodules:
 
     git submodule update --init
+
+Install apex into the environment:
+
+    cd deps/apex
+    pip install -v --no-cache-dir ./
+
+Install files2rouge into the environment:
+
+    pip install -U git+https://github.com/pltrdy/pyrouge
+    cd deps/files2rouge
+    python setup_rouge.py
+    python setup.py install
+
+Download spaCy's small model:
+
+    python -m spacy download en_core_web_sm
 
 ## Project structure
 
