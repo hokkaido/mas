@@ -17,13 +17,13 @@ Initialize git submodules
 | Folder      | Description |
 | ----------- | ----------- |
 | .             | Some CLI commands live here |
-| checkpoints   | Place where training checkpoints are stored.  |
+| checkpoints   | Place where fairseq training checkpoints are stored.  |
 | datasets      | Location of data sets  |
 | eval           | Location for evaluation results  |
 | deps          | This contains our model additions to MASS, which was forked from the original   |
 | mas           | Various python modules  |
 | notebooks           | Several notebooks, especially for evaluation  |
-| scripts           | Training and so on   |
+| scripts           | Bash scripts for training, data processing, evaluation and so on. |
 
 ## MASS Base-Model
 
@@ -45,7 +45,7 @@ There is a script that downloads the three datasets where you don't have to foll
 
 This will create three folders, `datasets/cnndm/raw`, `datasets/xsum/raw`, `datasets/duc2004/raw`.
 
-These raw data sets then have to be preprocessed and binarized.
+These raw data sets then have to be preprocessed and binarized (see below).
 
 ### Data acquisition
 
@@ -71,7 +71,7 @@ Please contact [NIST](https://duc.nist.gov/duc2003/tasks.html) directly.
 
 ### Data processing
 
-Data processing follows the following two stages
+Data processing follows the following stages
 
 1. Clean-Up
 1. Preprocessing
@@ -81,7 +81,7 @@ Data processing follows the following two stages
 
 The data sets first need to be converted and cleaned up so that they can be preprocessed and then binarized.
 
-Unprocessed data needs to be converted into the source target pairs per split, depending on the data set this will produce files like this:
+Unprocessed raw data needs to be converted into the source target pairs per split, depending on the data set this will produce files like this:
 
     train.{src,tgt}
     valid.{src,tgt}
@@ -89,7 +89,7 @@ Unprocessed data needs to be converted into the source target pairs per split, d
 
 where `src` denotes the source articles and `tgt` denotes the summaries.
 
-The data can be tokenized, but doesn't have to be. More important is that the data shouldn't be lowercased in this step because the named entity recognition during the preprocessing step is very sensitive to the capitalization.
+The data can be tokenized during this step, but doesn't have to be. More important is that the data shouldn't be lowercased in this step because the named entity recognition during the preprocessing step is very sensitive to the capitalization.
 
 There is a script that does this automatically for all three datasets:
 
@@ -131,71 +131,44 @@ There is also a python script that can be used for this:
 #### Binarization
 
 The preprocessed data needs to be binarized so that `fairseq` can use it. This step requires a
-dictionary for both `core` and `entities`. The dictionary for the the base model can be found
-in it downloaded state. The dictionary for the entities can be found in `datasets/cnn
+dictionary for both `core` and `entities`. The dictionary for the base MASS model can be found
+in its archive, but it is also provided together with the entities dictionary at `datasets/shared`.
 
-This step will produce two folders
+The binarization step will produce two folders
 
 * core
 * entities
 
-There are example scripts inside the `scripts` folder.
+There are example scripts inside the `scripts` folder that can be used for the binarization:
 
     ./scripts/data/binarize-cnndm.sh
     ./scripts/data/binarize-duc2004.sh
     ./scripts/data/binarize-xsum.sh
 
-## Approaches
+## Training
 
-### Simple-Finetuning
+You can find examples for the training and fine-tuning scripts under `scripts/examples` and even more inside `scripts/other`. Suffice to say that especially the batch size, learning rate and gradient accumulation steps will depend on your setup. 
 
+fairseq needs to be informed of the model extensions by setting a value for `--user-dir` that points to the git sub-module at `--user-dir deps/MASS/MASS-summarization/mass` and settings the `--arch` flag to `summarization_mass_base`.
 
+There are two different learning tasks `augmented_summarization_mass`, which is used for fine-tuning with additional embedding layers and the copy-mechanism and `masked_summarization_mass` which enables masked in-domain pretraining.
 
-### In-Domain Pretraining
+An example for a complete fine-tuning command without using any of the addtional embedding layers is shown below:
 
-
-
-
-### Sentence Selection
-
-Sentence selection needs two things:
-
-* A constrained train and validation data set
-* A trained sentence classifier
-
-
-#### Data preparation
-
-There is an example script that constrains CNN-DM, and creates class labels that can be adapted:
-
-    ./scripts/examples/constrain-cnndm.sh
-
-This will take a while and create files inside `datasets/cnndm-constrained/preprocessed` and `datasets/cnndm/labels`.
-
-After this step, we need to preprocess and binarize this data, you can use or adapt
-
-    ./scripts/data/preprocess-constrained-cnndm.sh
-    ./scripts/data/binarize-constrained.sh
-
-#### Train classifier
-
-We have experimented with multiple classifiers, an example is provided for training one based on XLNet:
-
-    ./examples/train-selector.sh
-
-This will train a classifier and periodically check
-
-You can look at the progress with tensorboar
-
-#### Use classifier to constrain test set
-
-
-
-#### Constrain data
-
-See ...
-
-## Training (fairseq)
+    fairseq-train datasets/cnndm/ \
+        --user-dir deps/MASS/MASS-summarization/mass --task augmented_summarization_mass --arch summarization_mass_base \
+        --optimizer adam --adam-betas '(0.9, 0.98)' --clip-norm 0.0 \
+        --lr 0.0005 --min-lr 1e-09 \
+        --lr-scheduler inverse_sqrt --warmup-init-lr 1e-07 --warmup-updates 4000 \
+        --weight-decay 0.0 \
+        --criterion label_smoothed_cross_entropy --label-smoothing 0.1 \
+        --update-freq 8 --max-tokens 4096 \
+        --ddp-backend=no_c10d --max-epoch 25 \
+        --max-source-positions 512 --max-target-positions 512 \
+        --fp16 \
+        --memory-efficient-fp16 \
+        --skip-invalid-size-inputs-valid-test \
+        --load-from-pretrained-model checkpoints/mass-base-uncased/mass-base-uncased.pt \
 
 ### Embedding Entities
 
@@ -211,7 +184,7 @@ Entities can be embedded on both the encoder side with the following args
 
 An example can be found at
 
-    ./scripts/examples/finetune-with-entities.sh
+    ./scripts/examples/fine-tune-with-entities.sh
 
 ### Embedding Segments
 
@@ -231,26 +204,80 @@ There are four arguments that control the embedding of segment positions:
 
 An example can be found at
 
-    ./scripts/examples/finetune-with-segments.sh
+    ./scripts/examples/fine-tune-with-segments.sh
+
+
+### Copy-mechanism
+
+The copy mechanism can be enabled with
+
+    --copy-attn
+
+You also need to use a different criterion here:
+
+    --criterion copy_generator_loss
+
+*Attention:* FP16 is not supported here. 
+
+An example can be found at
+
+    ./scripts/examples/fine-tune-with-copy.sh
 
 
 ### Sentence Selection
 
-Sentence selection requires a pre-constrained data set.
+Sentence selection needs two things:
 
-### Copy generator
+* A constrained training and validation data set
+* A trained sentence classifier that can be applied on the test set
 
-Copy generator can be enabled with
+After that, the constrained data set can be fine-tuned and evaluated as normal. Unfortunately, the procedure to constrain the data sets is a bit involved. 
 
-    --copy-attn
+#### Data preparation
 
-*Attention:* FP16 is not supported here.
+There is an example script that constrains the training and validation sets of CNN-DM and creates class labels for the sentence classifier:
 
-An example can be found at
+    ./scripts/examples/constrain-cnndm.sh
 
-    ./scripts/examples/finetune-with-copy.sh
+This script will take a while, the constrained files and labels will be created `datasets/cnndm-constrained/preprocessed` and `datasets/cnndm/labels` respectively.
 
-### In-Domain Pretraining
+You could now preprocess this constrained data to create the core augmented data sets if you want to use the named entities embedding layer:
+
+    ./scripts/data/preprocess-constrained-cnndm.sh
+
+Ideally, we only want to run this step once, for the training and validation sets. Once preprocessed, we can fine-tune a model with it and then evaluate it on multiple constrained test sets if you are experimenting with multiple sentence classifiers. 
+
+#### Train classifier
+
+In order to constain the test sets, we need to train a sentence classifier on the labels which were extracted in the previous step.
+
+We have experimented with multiple sentence classifiers, an example is provided for training one for CNN-DM and based on XLNet that you can adapt further:
+
+    ./examples/train-selector.sh
+
+This will train a classifier and periodically save a checkpoint to /output.
+
+You can look at the progress with tensorboard
+
+    ./tensorboard --logdir tensorboard
+
+#### Use classifier to constrain test set
+
+After you have trained a classifier, you need to apply it to the test set. An example for this can be found at:
+
+    ./scripts/examples/constrain-with-trained-selector.sh 
+
+Please adapt it to make use of the correct checkpoint.
+
+After the test set has been constrained, we need to preprocess and binarize the complete CNN-DM dataset, you can use or adapt
+
+    ./scripts/data/preprocess-constrained-cnndm-test.sh
+    ./scripts/data/binarize-constrained.sh
+
+#### Fine-Tune
+
+Now you can fine-tune and evaluate
+
 
 ## Hyperparameter optimization
 
@@ -297,13 +324,25 @@ Run worker 2 in new tab
 
     ./scripts/optimize/tune-hpb-inference-cnndm.sh --hpb_worker
 
-Visualize results during run by pointing to the run_id:
+Visualize the optimization results during run by pointing to the run_id:
 
     python visualize_bohb.py --run_id runs/cnndm-vanilla
 
 ## Evaluation
 
-We recommend using the `eval` directory for this. For instance, let's say you have trained four models that reside inside the following folders:
+### Super simple evaluation
+
+If you just want to evaluate a single model, you can adapt the following script:
+
+    ./scripts/examples/infer-cnndm.sh
+
+This saves the output to `output.txt`. You can now calculate the ROUGE-scores with
+
+    ./scripts/eval/rouge.sh
+
+### Evaluating multiple models at once
+
+We recommend using the `eval` directory for evaluating multiple models at once. For instance, let's say you have trained four models that reside inside the following folders:
 
 - checkpoints/cnndm-vanilla
 - checkpoints/cnndm-entities-encoder
@@ -323,7 +362,7 @@ The checkpoints dir already looks good:
 
     MODELDIR=checkpoints
 
-Then, set the parameters that you found:
+Then, set the parameters that you found by overriding `BEAM_PARAMS`:
 
     BEAM_PARAMS="--beam 3 --min-len 45 --no-repeat-ngram-size 3"
 
@@ -335,10 +374,9 @@ Now, set the models and set the correct fairseq parameters
         ['cnndm-entities-encoder']="--embed-entities-encoder"
     )
 
+Running `./scripts/eval/eval-all-cnndm.sh` will evaluate the three models with ROUGE on the test set and save the results inside the `eval` dir. 
 
-Running `./scripts/eval/eval-all-cnndm.sh` will evaluate the three models with ROUGE on the test set and save the results inside the `eval` dir.
-
-### Further Analysis
+### Further analysis
 
 Please consult the `notebooks` directory for some ideas on how to evaluate these results.
 
@@ -346,10 +384,15 @@ Please consult the `notebooks` directory for some ideas on how to evaluate these
 
 You can also create BestWorstScale samples for an MTurk experiment:
 
-    python create_bws_eval.py --experiment-dir "eval/exp1-cnndm" --models cnndm-reference cnndm-entities-encoder cnndm-segments-encoder
+    python create_bws_eval.py --experiment-dir eval/exp1-cnndm --models cnndm-reference cnndm-entities-encoder cnndm-segments-encoder
 
-After you have done a human MTurk Evaluation with the, you can adapt `mturk_eval.py` to your liking to calculate the BWS-score.
+After you have done a human MTurk Evaluation with the generated CSV, you can adapt `mturk_eval.py` to your liking to calculate the BWS-score.
 
-Create latex table rows:
 
-    python pprint_rouge.py
+## Acknowledgements
+
+This repository contains code that is an extension of or is inspired from:
+
+https://github.com/microsoft/MASS (Base Architecture)
+https://github.com/OpenNMT/OpenNMT-py (Copy Mechanism)
+https://github.com/ThilinaRajapakse/simpletransformers/ (Sentence Classification)

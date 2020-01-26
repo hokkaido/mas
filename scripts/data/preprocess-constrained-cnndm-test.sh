@@ -6,7 +6,7 @@ ENT_OUTDIR=${DATA_DIR}/cnndm-constrained/preprocessed-entities
 mkdir -p $ENC_OUTDIR
 mkdir -p $ENT_OUTDIR
 
-for SPLIT in test; do 
+for SPLIT in train valid; do 
     python preprocess.py \
         --inputs ${DATA_DIR}/cnndm-constrained/preprocessed/${SPLIT}.tgt \
         --enc-outputs ${ENC_OUTDIR}/${SPLIT}.tgt \
@@ -14,7 +14,7 @@ for SPLIT in test; do
         --workers 40; \
 done 
 
-for SPLIT in test; do 
+for SPLIT in train valid; do 
     python preprocess.py \
         --inputs ${DATA_DIR}/cnndm-constrained/preprocessed/${SPLIT}.src \
         --enc-outputs ${ENC_OUTDIR}/${SPLIT}.src \

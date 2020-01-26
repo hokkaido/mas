@@ -1,4 +1,4 @@
-MODEL=checkpoints/cnndm-ft-on-joint-pretrained/checkpoint_best.pt
+MODEL=checkpoints/cnndm/checkpoint_best.pt
 DATADIR=datasets/cnndm/
 USERDIR=deps/MASS/MASS-summarization/mass
 
@@ -8,8 +8,6 @@ fairseq-generate $DATADIR --path $MODEL \
     --skip-invalid-size-inputs-valid-test \
     --fp16 \
     --memory-efficient-fp16 > output.txt
-
-
     # --embed-segments-encoder \
     # --embed-segments-decoder \
     # --segment-tokens "." \

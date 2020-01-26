@@ -8,7 +8,7 @@ mkdir -p $ENC_OUTDIR
 mkdir -p $ENT_OUTDIR
 
 for SPLIT in train valid test; do 
-    python process.py \
+    python preprocess.py \
         --inputs ${DATA_DIR}/cnndm/preprocessed/${SPLIT}.abstract.txt \
         --enc-outputs ${ENC_OUTDIR}/${SPLIT}.tgt \
         --ent-outputs ${ENT_OUTDIR}/${SPLIT}.tgt \
@@ -16,7 +16,7 @@ for SPLIT in train valid test; do
 done 
 
 for SPLIT in train valid test; do 
-    python process.py \
+    python preprocess.py \
         --inputs ${DATA_DIR}/cnndm/preprocessed/${SPLIT}.article.txt \
         --enc-outputs ${ENC_OUTDIR}/${SPLIT}.src \
         --ent-outputs ${ENT_OUTDIR}/${SPLIT}.src \

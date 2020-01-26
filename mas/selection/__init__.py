@@ -1,2 +1,3 @@
+from .constrain_with_transformer import constrain_with_transformer
 from .select_sentences import SentenceSelector
 from .train_xl_selector import train_xl_selector

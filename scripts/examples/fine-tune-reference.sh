@@ -1,5 +1,3 @@
-# Used to reproduce MASS results with the binarized examples from MASS
-
 fairseq-train datasets/cnndm/ \
     --user-dir deps/MASS/MASS-summarization/mass --task translation_mass --arch transformer_mass_base \
     --optimizer adam --adam-betas '(0.9, 0.98)' --clip-norm 0.0 \

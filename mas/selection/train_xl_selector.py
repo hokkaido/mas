@@ -32,8 +32,8 @@ def train_xl_selector(args):
         'eval_batch_size': 32,
         'num_train_epochs': 10,
         'logging_steps': 100,
-        'save_steps': 1000, # attn scales with accumulation steps
-        'eval_steps': 500,
+        'save_steps': 500, # attn scales with accumulation steps
+        'eval_steps': 250,
         'max_seq_length': 128,
         'learning_rate': 1e-5,
         'warmup_ratio': 0.04,
