@@ -417,5 +417,7 @@ After you have done a human MTurk Evaluation with the generated CSV, you can ada
 This repository contains code that is an extension of or is inspired from:
 
 https://github.com/microsoft/MASS (Base Architecture)
+
 https://github.com/OpenNMT/OpenNMT-py (Copy Mechanism)
+
 https://github.com/ThilinaRajapakse/simpletransformers/ (Sentence Classification)

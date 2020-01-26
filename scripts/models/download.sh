@@ -1,6 +1,6 @@
 #!/bin/bash
 
-MODEL_DIR=refactorcheckpoints
+MODEL_DIR=checkpoints
 
 mkdir -p ${MODEL_DIR}/mass-base-uncased
 echo "Downloading MASS Base Model"

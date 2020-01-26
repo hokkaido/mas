@@ -1,5 +1,5 @@
 #!/bin/bash
-DATA_DIR=refactorsets
+DATA_DIR=datasets
 INPUT_DIR=${DATA_DIR}/cnndm/preprocessed
 OUTPUT_DIR=${DATA_DIR}/cnndm-constrained/preprocessed
 CLASSIFIER_OUTPUT_DIR=${DATA_DIR}/cnndm-constrained/labels

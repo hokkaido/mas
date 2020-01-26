@@ -50,9 +50,16 @@ do
 
     grep ^H $OUTDIR/output.txt | cut -f3- > $OUTDIR/hypd.txt 
     grep ^T $OUTDIR/output.txt | cut -f2- > $OUTDIR/tard.txt 
+    grep ^S $OUTDIR/output.txt | cut -f2- > $OUTDIR/srcd.txt 
     cat $OUTDIR/hypd.txt | sed 's/ ##//g' > $OUTDIR/hyp.txt
     cat $OUTDIR/tard.txt | sed 's/ ##//g' > $OUTDIR/tar.txt
+    cat $OUTDIR/srcd.txt | sed 's/ ##//g' > $OUTDIR/src.txt
+
+    cp -u $OUTDIR/src.txt $EVALDIR/$EXPERIMENT/src.txt
+    
     rm $OUTDIR/hypd.txt
     rm $OUTDIR/tard.txt
+    rm $OUTDIR/srcd.txt
+
     files2rouge $OUTDIR/hyp.txt $OUTDIR/tar.txt | tee $OUTDIR/rouge.txt
 done

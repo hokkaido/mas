@@ -1,5 +1,5 @@
-DATA_DIR=refactorsets
-DATA_DIR=refactorsets
+DATA_DIR=datasets
+DATA_DIR=datasets
 
 ENC_OUTDIR=${DATA_DIR}/duc2004/preprocessed-core
 ENT_OUTDIR=${DATA_DIR}/duc2004/preprocessed-entities

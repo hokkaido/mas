@@ -1,4 +1,4 @@
-DATA_DIR=refactorsets
+DATA_DIR=datasets
 
 ENC_OUTDIR=${DATA_DIR}/xsum/preprocessed-core
 ENT_OUTDIR=${DATA_DIR}/xsum/preprocessed-entities

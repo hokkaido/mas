@@ -1,5 +1,4 @@
-DATA_DIR=refactorsets
-DATA_DIR=refactorsets
+DATA_DIR=datasets
 
 ENC_OUTDIR=${DATA_DIR}/cnndm/preprocessed-core
 ENT_OUTDIR=${DATA_DIR}/cnndm/preprocessed-entities

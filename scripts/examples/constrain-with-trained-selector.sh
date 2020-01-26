@@ -1,6 +1,6 @@
 #!/bin/bash
 
-DATA_DIR=refactorsets
+DATA_DIR=datasets
 INPUT_DIR=${DATA_DIR}/cnndm/preprocessed
 OUTPUT_DIR=${DATA_DIR}/cnndm-constrained/preprocessed
 MODEL_DIR=outputs/checkpoint-1500
