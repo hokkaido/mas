@@ -6,11 +6,11 @@ Presented approaches
 * Embedding segment positions
 * Adding copy-mechanism
 * Sentence selection
-* Masked In-Domain Pre-Training
+* Masked in-domain pretraining (improved)
 
 ## Prerequisites
 
-The repository has been tested with Ubuntu 18.04 and CUDA 10.2. It requires Anaconda, git, wget and unzip to work.
+The repository has been tested with Ubuntu 18.04 and CUDA 10.2. It requires Anaconda, git, NVIDIA Apex, wget and unzip to work.
 
 Create the conda environment and install immediate dependencies
 
@@ -24,13 +24,13 @@ Initialize git submodules
 
 | Folder      | Description |
 | ----------- | ----------- |
-| .             | Some CLI commands live here |
+| .             | Some CLI commands live here. |
 | checkpoints   | Place where fairseq training checkpoints are stored.  |
-| datasets      | Location of data sets  |
-| eval           | Location for evaluation results  |
-| deps          | This contains our model additions to MASS, which was forked from the original   |
-| mas           | Various python modules  |
-| notebooks           | Several notebooks, especially for evaluation  |
+| datasets      | Location of data sets.  |
+| eval           | Location for evaluation results.  |
+| deps          | This contains our model additions to MASS, which was forked from the original implementation.   |
+| mas           | Various python modules.  |
+| notebooks           | Several notebooks, especially for evaluation.  |
 | scripts           | Bash scripts for training, data processing, evaluation and so on. |
 
 ## MASS Base-Model
@@ -288,8 +288,19 @@ Now you can fine-tune and evaluate the constrained data set by adapting any of t
 
 ### Masked In-Domain Pretraining
 
+A variant of the masked in-domain pretraining as described in the thesis is presented here, it provides better results than the originally proposed scheme, but it is still not better than the normal fine-tuning procedure of MASS. In this variant, a joint loss is optimized during pretraining instead of single loss. It is inspired by the supervised neural machine translation version of MASS.
 
+The originally proposed masking scheme is virtually unchanged, it still contains the sentence permutation of the source text, and masks a portion of the overlapping tokens between source and summary, it also also randomly replaces certain masked tokens with a random word from the vocabulary. However, it doesn't randomly flip between masking overlapping and non-overlapping tokens, and the goal here is to predict the original source text.
 
+Jointly, we also try to predict a partially corrupted (masked) version of the entire target sequence, not just the masked overlapping tokens. Both of these losses are added together during the training step.
+
+First, we pretrain in-domain until the validation loss stops decreasing:
+
+    ./scripts/examples/pretrain-cnndm-joint.sh
+
+And then we fine-tune as with the other
+
+    ./scripts/examples/fine-tune-on-pretrained-joint.sh
 
 ## Hyperparameter optimization
 
@@ -348,7 +359,7 @@ If you just want to evaluate a single model, you can adapt the following script:
 
     ./scripts/examples/infer-cnndm.sh
 
-This saves the output to `output.txt`. You can now calculate the ROUGE-scores with
+This saves the output to `output.txt`. You can now calculate the ROUGE-scores with:
 
     ./scripts/eval/rouge.sh
 
@@ -390,7 +401,7 @@ Running `./scripts/eval/eval-all-cnndm.sh` will evaluate the three models with R
 
 ### Further analysis
 
-Please consult the `notebooks` directory for some ideas on how to evaluate these results.
+Please consult the `notebooks` directory for some ideas on how to evaluate the output of the models even further.
 
 ### Human Evaluation
 
