@@ -1,4 +1,4 @@
-# Transfer Learning for 📝 Text Summarization
+# Transfer Learning for Text Summarization
 
 Presented approaches
 
@@ -10,7 +10,7 @@ Presented approaches
 
 ## Prerequisites
 
-The repository has been tested with Ubuntu 18.04 and CUDA 10.2. It requires Anaconda, git, NVIDIA Apex, wget and unzip to work.
+The repository has been tested with Ubuntu 18.04 and CUDA 10.2. It requires Python 3.7, Anaconda, git, NVIDIA Apex, wget and unzip to work.
 
 Create the conda environment and install immediate dependencies
 
@@ -79,9 +79,9 @@ If you don't want to rely on the bash script above, you can also do this by foll
 
 Here, we mainly need the acquire the following files / directories:
 
-cnn_stories_tokenized
-dm_stories_tokenized
-url_lists
+* cnn_stories_tokenized
+* dm_stories_tokenized
+* url_lists
 
 There are various ways to do this, with following the instructions at https://github.com/abisee/cnn-dailymail being one option.
 
@@ -121,9 +121,15 @@ There is a script that does this automatically for all three datasets:
 
 However, you can also do this individually:
 
-    python cleanup.py --config cnndm --input-dir datasets/cnndm/raw --output-dir datasets/cnndm/preprocessed
-    python cleanup.py --config xsum --input-dir datasets/xsum/raw --output-dir datasets/xsum/preprocessed
-    python cleanup.py --config duc2004 --input-dir datasets/duc2004/raw --output-dir datasets/duc2004/preprocessed
+    python cleanup.py --config cnndm \
+                      --input-dir datasets/cnndm/raw \
+                      --output-dir datasets/cnndm/preprocessed
+    python cleanup.py --config xsum \
+                      --input-dir datasets/xsum/raw \
+                      --output-dir datasets/xsum/preprocessed
+    python cleanup.py --config duc2004 \
+                      --input-dir datasets/duc2004/raw \
+                      --output-dir datasets/duc2004/preprocessed
 
 #### Preprocessing
 
@@ -180,7 +186,9 @@ There are two different learning tasks `augmented_summarization_mass`, which is 
 An example for a complete fine-tuning command without using any of the addtional embedding layers is shown below:
 
     fairseq-train datasets/cnndm/ \
-        --user-dir deps/MASS/MASS-summarization/mass --task augmented_summarization_mass --arch summarization_mass_base \
+        --user-dir deps/MASS/MASS-summarization/mass \
+        --task augmented_summarization_mass \
+        --arch summarization_mass_base \
         --optimizer adam --adam-betas '(0.9, 0.98)' --clip-norm 0.0 \
         --lr 0.0005 --min-lr 1e-09 \
         --lr-scheduler inverse_sqrt --warmup-init-lr 1e-07 --warmup-updates 4000 \
@@ -409,7 +417,8 @@ Now, set the models and set the correct fairseq parameters
 
     MODELS=(
         ['cnndm-vanilla']=''
-        ['cnndm-segments-encoder']="--embed-segments-encoder --segment-tokens . --max-segments 128"
+        ['cnndm-segments-encoder']="--embed-segments-encoder 
+        --segment-tokens . --max-segments 128"
         ['cnndm-entities-encoder']="--embed-entities-encoder"
     )
 
@@ -423,7 +432,9 @@ Please consult the `notebooks` directory for some ideas on how to evaluate the o
 
 You can also create BestWorstScale samples for an MTurk experiment:
 
-    python create_bws_eval.py --experiment-dir eval/exp1-cnndm --models cnndm-reference cnndm-entities-encoder cnndm-segments-encoder
+    python create_bws_eval.py --experiment-dir eval/exp1-cnndm \
+                              --models cnndm-reference cnndm-entities-encoder \
+                                cnndm-segments-encoder
 
 After you have done a human MTurk Evaluation with the generated CSV, you can adapt `mturk_eval.py` to your liking to calculate the BWS-score.
 
